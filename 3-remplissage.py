@@ -10,6 +10,12 @@ from faker import Faker
 
 from faker import Faker
 
+SUCCURSALES = 25
+LOUEURS = 125
+CLIENTS = 4000
+VOITURES = 500
+LOCATIONS = 10000
+
 MARQUES = (
     "Toyota",
     "Volkswagen",
@@ -33,7 +39,7 @@ MARQUES = (
     "Mitsubishi",
 )
 
-modeles = (
+MODELES = (
     ("Ford", "Focus", "berline", {"annee": 2020, "dimensions": {"largeur": 182, "hauteur": 146, "profondeur": 437}}),
     ("Subaru", "Impreza", "berline", {"annee": 2021, "dimensions": {"largeur": 178, "hauteur": 145, "profondeur": 462}}),
     ("Nissan", "Rogue", "VUS", {"annee": 2023, "dimensions": {"largeur": 184, "hauteur": 169, "profondeur": 465}}),
@@ -85,31 +91,17 @@ with psycopg.connect(
             """
             PREPARE ajout_succursale (JSONB) AS
             INSERT INTO succursale (adresse) VALUES ($1)
-            """
-        )
-        #cursor.execute(
-        #    """
-        #    PREPARE ajout_loueur (VARCHAR, VARCHAR, DECIMAL(10, 2), JSONB) AS
-        #    INSERT INTO loueur (nom, prenom, salaire_heure, contact)
-        #    VALUES (
-        #        $1,
-        #        $2,
-        #        $3,
-        #        (
-        #            SELECT id FROM 
-        #            ),
-        #        $4
-        #    )
-        #    """
-        #)
-        cursor.execute(
-            """
+
+            PREPARE ajout_loueur (VARCHAR, VARCHAR, DECIMAL(10, 2), INT, JSONB) AS
+            INSERT INTO loueur (nom, prenom, salaire_heure, id_succursale, contact)
+            VALUES ($1, $2, $3, $4, $5)
+
+            PREPARE ajout_client (VARCHAR, VARCHAR, JSONB) AS
+            INSERT INTO client (nom, prenom, contact) VALUES ($1, $2, $3)
+
             PREPARE ajout_marque (VARCHAR) AS
             INSERT INTO marque_voiture (nom) VALUES ($1)
-            """
-        )
-        cursor.execute(
-            """
+        
             PREPARE ajout_modele (VARCHAR, VARCHAR, VARCHAR, JSONB) AS
             INSERT INTO modele_voiture (nom, id_marque, id_type, details)
             VALUES (
@@ -118,13 +110,38 @@ with psycopg.connect(
                 (SELECT id FROM type_voiture WHERE nom = $3),
                 $4
             )
+
+            PREPARE ajout_voiture (VARCHAR, VARCHAR, VARCHAR, SMALLINT, INT, DATE, DECIMAL(10, 2), INT, JSONB) AS
+            INSERT INTO voiture (immatriculation, id_modele, couleur, annee, id_succursale, date_achat, prix_achat, id_etat, details)
+            VALUES (
+            $1, 
+            (
+                SELECT id FROM modele_voiture WHERE nom = $2 AND id_marque = (SELECT id FROM marque_voiture WHERE nom = $3)
+            ),
+            $3, $4, $5, $6, $7, $8, $9)
             """
         )
 
-        #################### Utilisation des requêtes préparées ####################
+        ############# Réinitialisation des tables pour simplifier les associations aléatoires #############
+        cursor.execute(
+            """
+            TRUNCATE TABLE
+                location_voiture,
+                facture,
+                voiture,
+                modele_voiture,
+                marque_voiture,
+                client,
+                loueur,
+                succursale
+            RESTART IDENTITY CASCADE
+            """
+        )
+
+        #################### Utilisation des requêtes préparées pour générer les données ####################
 
         faker = Faker("fr_CA")
-        for _ in range(100):
+        for _ in range(SUCCURSALES):
             adresse = {
                 "rue": faker.street_address(),
                 "ville": faker.city(),
@@ -132,11 +149,46 @@ with psycopg.connect(
                 "pays": "Canada",
             }
             cursor.execute(
-                "INSERT INTO succursale (adresse) VALUES (%s)",
+                "EXECUTE ajout_succursale (%s)",
                 (Jsonb(adresse),),
             )
 
+        for _ in range(LOUEURS):
+            nom = faker.last_name()
+            prenom = faker.first_name()
+            salaire_heure = round(random.uniform(17, 47), 2)
+            contact = {
+                "email": faker.email(),
+                "telephone": faker.phone_number(),
+                "adresse": {
+                    "rue": faker.street_address(),
+                    "ville": faker.city(),
+                    "code_postal": faker.postcode(),
+                    "pays": "Canada",
+                }
+            }
+            cursor.execute(
+                "EXECUTE ajout_loueur (%s, %s, %s, %s, %s)",
+                (nom, prenom, salaire_heure, random.randint(1, SUCCURSALES), Jsonb(contact)),
+            )
 
+        for _ in range(CLIENTS):
+            nom = faker.last_name()
+            prenom = faker.first_name()
+            contact = {
+                "email": faker.email(),
+                "telephone": faker.phone_number(),
+                "adresse": {
+                    "rue": faker.street_address(),
+                    "ville": faker.city(),
+                    "code_postal": faker.postcode(),
+                    "pays": "Canada",
+                }
+            }
+            cursor.execute(
+                "EXECUTE ajout_client (%s, %s, %s)",
+                (nom, prenom, Jsonb(contact)),
+            )
 
         
 
@@ -147,7 +199,7 @@ with psycopg.connect(
                 )
             )
 
-        for modele in modeles:
+        for modele in MODELES:
             cursor.execute(
                 sql.SQL("EXECUTE ajout_modele ({}, {}, {}, {})").format(
                     sql.Literal(modele[1]),
