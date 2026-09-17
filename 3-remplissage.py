@@ -1,20 +1,24 @@
-import argparse
+
+import datetime
 import json
 import random
-from datetime import datetime, timedelta
+import string
 
 import psycopg
 from psycopg import sql
 from psycopg.types.json import Jsonb
 from faker import Faker
 
-from faker import Faker
+
 
 SUCCURSALES = 25
 LOUEURS = 125
 CLIENTS = 4000
 VOITURES = 500
 LOCATIONS = 10000
+
+OUVERTURE = 9
+FERMETURE = 17
 
 MARQUES = (
     "Toyota",
@@ -38,6 +42,29 @@ MARQUES = (
     "Porsche",
     "Mitsubishi",
 )
+
+def genererNumeroSerie():
+    str = "".join(random.choices(string.ascii_uppercase, k=2)) 
+    return str + "".join(random.choices(string.digits, k=10))
+
+def etatAleatoire():
+    chance = random.randint(1, 20)
+
+    match chance:
+        case 1:
+            return 4 # manquant
+        case 2:
+            return 5 # débarras
+        case 3:
+            return 3 # défectueux
+        case _:
+            return 1 # disponible
+
+def heureAleatoire():
+    return datetime.time(
+        hour=random.randint(OUVERTURE, FERMETURE - 1),
+        minute=random.randrange(60)
+    )
 
 MODELES = (
     ("Ford", "Focus", "berline", {"annee": 2020, "dimensions": {"largeur": 182, "hauteur": 146, "profondeur": 437}}),
@@ -90,17 +117,17 @@ with psycopg.connect(
         cursor.execute(
             """
             PREPARE ajout_succursale (JSONB) AS
-            INSERT INTO succursale (adresse) VALUES ($1)
+            INSERT INTO succursale (adresse) VALUES ($1);
 
             PREPARE ajout_loueur (VARCHAR, VARCHAR, DECIMAL(10, 2), INT, JSONB) AS
             INSERT INTO loueur (nom, prenom, salaire_heure, id_succursale, contact)
-            VALUES ($1, $2, $3, $4, $5)
+            VALUES ($1, $2, $3, $4, $5);
 
             PREPARE ajout_client (VARCHAR, VARCHAR, JSONB) AS
-            INSERT INTO client (nom, prenom, contact) VALUES ($1, $2, $3)
+            INSERT INTO client (nom, prenom, contact) VALUES ($1, $2, $3);
 
             PREPARE ajout_marque (VARCHAR) AS
-            INSERT INTO marque_voiture (nom) VALUES ($1)
+            INSERT INTO marque_voiture (nom) VALUES ($1);
         
             PREPARE ajout_modele (VARCHAR, VARCHAR, VARCHAR, JSONB) AS
             INSERT INTO modele_voiture (nom, id_marque, id_type, details)
@@ -109,16 +136,24 @@ with psycopg.connect(
                 (SELECT id FROM marque_voiture WHERE nom = $2),
                 (SELECT id FROM type_voiture WHERE nom = $3),
                 $4
-            )
+            );
 
             PREPARE ajout_voiture (VARCHAR, VARCHAR, VARCHAR, SMALLINT, INT, DATE, DECIMAL(10, 2), INT, JSONB) AS
-            INSERT INTO voiture (immatriculation, id_modele, couleur, annee, id_succursale, date_achat, prix_achat, id_etat, details)
+            INSERT INTO voiture (plaque, id_modele, no_serie, id_etat, kilometrage, date_construction, prix_jour, id_succursale, details)
             VALUES (
             $1, 
             (
                 SELECT id FROM modele_voiture WHERE nom = $2 AND id_marque = (SELECT id FROM marque_voiture WHERE nom = $3)
             ),
-            $3, $4, $5, $6, $7, $8, $9)
+            $3, $4, $5, $6, $7, $8, $9);
+
+            PREPARE ajout_facture (INT, INT, DATE, DECIMAL(10, 2), DECIMAL(10, 2), DECIMAL(10, 2), JSONB) AS
+            INSERT INTO facture (id_client, id_succursale, date_facture, montant, montant_tps, montant_tvq, paiement)
+            VALUES ($1, $2, $3, $4, $5, $6, $7);
+
+            PREPARE ajout_location (INT, INT, INT, DATE, DATE, TIMESTAMP, DECIMAL(10, 2)) AS
+            INSERT INTO location_voiture (id_voiture, id_facture, id_loueur, date_debut,  date_fin, retour, kilometrage)
+            VALUES ($1, $2, $3, $4, $5, $6, $7);
             """
         )
 
@@ -150,7 +185,7 @@ with psycopg.connect(
             }
             cursor.execute(
                 "EXECUTE ajout_succursale (%s)",
-                (Jsonb(adresse),),
+                (Jsonb(adresse))
             )
 
         for _ in range(LOUEURS):
@@ -208,5 +243,50 @@ with psycopg.connect(
                     sql.Literal(json.dumps(modele[3]))  # Convertir le dictionnaire en JSON
                 )
             )
+
+        for _ in range(VOITURES):
+            
+            details = {
+                "kilometrage": random.randint(0, 200000),
+                "carburant": random.choice(["essence", "diesel", "électrique", "hybride"]),
+                "transmission": random.choice(["manuelle", "automatique"]),
+            }
+            cursor.execute(
+                sql.SQL("EXECUTE ajout_voiture ({}, {}, {}, {}, {}, {}, {}, {}, {})").format(
+                    faker.unique.license_plate(), # ----------------------------- plaque d'immatriculation
+                    sql.Literal(modele = random.choice(MODELES)[1]), # ---------- nom du modèle
+                    genererNumeroSerie(), # ------------------------------------- numéro de série
+                    etatAleatoire(), # ------------------------------------------ état aléatoire
+                    random.randint(0, 200000), # -------------------------------- kilometrage
+                    faker.date_between(start_date="-10y", end_date="today"), # -- date de construction
+                    round(random.uniform(15000, 80000), 2), # ------------------- Prix par jour
+                    random.randint(1, SUCCURSALES), # --------------------------- succursale aléatoire
+                    sql.Literal(json.dumps(details)) # -------------------------- détails supplémentaires
+                )
+            )
+
+ #       for _ in range(LOCATIONS):
+  #          duree = random.randint(3, 30)
+   #         date_debut = faker.date_between(start_date="-2y", end_date="today")
+    #        date_fin = date_debut + faker.time_delta(days=duree)
+#
+ #           voiture_id = random.randint(1, VOITURES)
+#
+ #           cursor.execute(
+  #          "SELECT prix_jour FROM voiture WHERE id = %s",
+   #         (voiture_id,),
+    #        )
+     #       prix_jour = cursor.fetchone()[0]
+#
+ #           cout = prix_jour * duree
+#
+ #           cursor.execute(
+  #              sql.SQL("EXECUTE ajout_facture ({}, {}, {}, {}, {}, {}, {})").format(
+   #                 random.randint(1, CLIENTS), # -------------------------------- client
+    #                random.randint(1, SUCCURSALES), # ---------------------------- succursale
+     #               sql.Literal(date_debut), # ----------------------------------- date de la facture
+      #              cout
+       #         )
+        #    )
 
 

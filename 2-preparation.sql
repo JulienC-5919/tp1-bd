@@ -17,6 +17,7 @@ INSERT INTO type_voiture(nom) VALUES
 
 -------------------| Utilisateur |-------------------
 
+DROP USER IF EXISTS robot;
 CREATE USER robot WITH PASSWORD 'yfzvjp9y3s9j37q'; -- Supprimer mdp?
 GRANT CONNECT ON DATABASE tp1_julien TO robot;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
@@ -29,3 +30,12 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO robot;
 GRANT UPDATE ON ALL SEQUENCES IN SCHEMA public TO robot;
 REVOKE UPDATE ON SEQUENCE etat_vehicule_id_seq, type_voiture_id_seq FROM robot;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO robot;
+
+ALTER TABLE location_voiture OWNER TO robot;
+ALTER TABLE facture OWNER TO robot;
+ALTER TABLE voiture OWNER TO robot;
+ALTER TABLE modele_voiture OWNER TO robot;
+ALTER TABLE marque_voiture OWNER TO robot;
+ALTER TABLE client OWNER TO robot;
+ALTER TABLE loueur OWNER TO robot;
+ALTER TABLE succursale OWNER TO robot;

@@ -71,11 +71,10 @@ CREATE TABLE location_voiture (
     id_voiture INT NOT NULL REFERENCES voiture(id),
     id_facture INT NOT NULL REFERENCES facture(id),
     id_loueur INT NOT NULL REFERENCES loueur(id),
-    date_debut TIMESTAMP NOT NULL,
-    date_retourne TIMESTAMP,
-    date_fin TIMESTAMP NOT NULL,
-    kilometrage_debut INT NOT NULL,
-    kilometrage_fin INT NOT NULL
+    date_debut DATE NOT NULL,
+    date_fin DATE NOT NULL,
+    retour TIMESTAMP,
+    kilometrage INT NOT NULL
 );
 
 
