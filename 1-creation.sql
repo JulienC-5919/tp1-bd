@@ -19,7 +19,7 @@ CREATE TABLE client (
     contact JSONB NOT NULL -- Email, téléphone, etc.
 );
 
-CREATE TABLE marque_voiture (
+CREATE TABLE marque (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nom VARCHAR(63) NOT NULL
 );
@@ -32,7 +32,7 @@ CREATE TABLE type_voiture (
 CREATE TABLE modele_voiture (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nom VARCHAR(63) NOT NULL,
-    id_marque INT NOT NULL REFERENCES marque_voiture(id),
+    id_marque INT NOT NULL REFERENCES marque(id),
     id_type INT NOT NULL REFERENCES type_voiture(id),
     details JSONB NOT NULL -- Dimensions, année, etc.
 );

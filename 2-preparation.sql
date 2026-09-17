@@ -24,7 +24,7 @@ REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO robot;
 GRANT INSERT, DELETE ON ALL TABLES IN SCHEMA public TO robot;
 REVOKE INSERT, DELETE ON TABLE etat_vehicule, type_voiture FROM robot;
-GRANT TRUNCATE ON TABLE succursale, loueur, client, marque_voiture,
+GRANT TRUNCATE ON TABLE succursale, loueur, client, marque,
 	modele_voiture, voiture, facture, location_voiture TO robot;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO robot;
 GRANT UPDATE ON ALL SEQUENCES IN SCHEMA public TO robot;
@@ -35,7 +35,7 @@ ALTER TABLE location_voiture OWNER TO robot;
 ALTER TABLE facture OWNER TO robot;
 ALTER TABLE voiture OWNER TO robot;
 ALTER TABLE modele_voiture OWNER TO robot;
-ALTER TABLE marque_voiture OWNER TO robot;
+ALTER TABLE marque OWNER TO robot;
 ALTER TABLE client OWNER TO robot;
 ALTER TABLE loueur OWNER TO robot;
 ALTER TABLE succursale OWNER TO robot;
