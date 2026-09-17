@@ -1,5 +1,7 @@
 --------------------| Tables dont le contenu ne sera plus modifié |--------------------
 
+TRUNCATE TABLE etat_vehicule, type_voiture RESTART IDENTITY CASCADE;
+
 INSERT INTO etat_vehicule (nom) VALUES
 ('disponible'),
 ('loue'),

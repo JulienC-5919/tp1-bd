@@ -206,7 +206,13 @@ with psycopg.connect(
 
                 """
                 INSERT INTO modele_voiture(nom, id_marque, id_type, details)
-                VALUES (%s, %s, %s, %s)
+                VALUES (
+                    %s, %s, 
+                    (
+                        SELECT id FROM type_voiture WHERE nom = %s
+                    ), 
+                    %s
+                )
                 """,
                 (  
                     modele[1], 
@@ -216,5 +222,68 @@ with psycopg.connect(
                 )
 
             )
+
+        for _ in range(VOITURES):
+                        
+                    details = {
+                        "kilometrage": random.randint(0, 200000),
+                        "carburant": random.choice(["essence", "diesel", "électrique", "hybride"]),
+                        "transmission": random.choice(["manuelle", "automatique"]),
+                    }
+                    cursor.execute(
+                        """
+                        INSERT INTO voiture(plaque, id_modele, no_serie, id_etat, kilometrage, date_construction, prix_jour, id_succursale, details)
+                        VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        )
+                        RETURNING id, prix_jour
+                        """,
+                        (
+                            faker.unique.license_plate(), # ----------------------------- plaque d'immatriculation
+                            random.randint(1, len(MODELES)), # -------------------------- modèle
+                            genererNumeroSerie(), # ------------------------------------- numéro de série
+                            etatAleatoire(), # ------------------------------------------ état aléatoire
+                            random.randint(0, 200000), # -------------------------------- kilometrage
+                            faker.date_between(start_date="-10y", end_date="today"), # -- date de construction
+                            round(random.uniform(15000, 80000), 2), # ------------------- Prix par jour
+                            random.randint(1, SUCCURSALES), # --------------------------- succursale aléatoire
+                            Jsonb(details) # ------------------------------------------- détails supplémentaires
+                        )
+                    )
+                    voiture_id, prix_jour = cursor.fetchone()
+
+                    for _ in range(LOCATIONS):
+                        duree = random.randint(3, 30)
+                        date_debut = faker.date_between(start_date="-2y", end_date="today")
+                        date_fin = date_debut + datetime.timedelta(days=duree)
+
+                        cout = prix_jour * duree
+
+                        paiement = {
+                            "type": random.choice(["carte de crédit", "carte de débit", "comptant"]),
+                            "fournisseur": faker.credit_card_provider(),
+                            "numero": faker.credit_card_number(),
+                        }
+
+                        cursor.execute(
+                            """
+                            INSERT INTO facture (id_client, id_succursale, date_facture, montant, montant_tps, montant_tvq, paiement)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            """,
+                            (
+                                random.randint(1, CLIENTS), # ------ client
+                                random.randint(1, SUCCURSALES), # -- succursale
+                                date_debut, # ---------------------- date de la facture
+                                cout,
+                                round(cout * 0.05, 2), # ----------- montant_tps
+                                round(cout * 0.09975, 2), # -------- montant_tvq
+                                Jsonb(paiement), # ----------------- mode de paiement
+                            )
+                        )
+            
+            
+            
+
+            
 
         
