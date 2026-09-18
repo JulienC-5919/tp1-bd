@@ -66,6 +66,7 @@ CREATE TABLE facture (
     paiement JSONB NOT NULL -- Type de carte, numéro? etc.
 );
 
+-- Éventuellement permettre de louer plusieurs véhicules dans une seule facture
 CREATE TABLE location_voiture (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_voiture INT NOT NULL REFERENCES voiture(id),
@@ -74,7 +75,15 @@ CREATE TABLE location_voiture (
     date_debut DATE NOT NULL,
     date_fin DATE NOT NULL,
     retour TIMESTAMP,
-    kilometrage INT NOT NULL
+    kilometrage DECIMAL(8, 2) NOT NULL
+);
+
+CREATE TABLE penalite (
+    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- Supprimer?
+    id_location INT NOT NULL REFERENCES location_voiture(id),
+    id_facture INT NOT NULL REFERENCES facture(id), -- Facture associée à la pénalité, différente de celle de la location
+    montant DECIMAL(10, 2) NOT NULL,
+    raison JSONB NOT NULL -- Raison de la pénalité, détails supplémentaires
 );
 
 

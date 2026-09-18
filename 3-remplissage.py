@@ -64,7 +64,7 @@ def etatAleatoire():
 def heureAleatoire():
     return datetime.time(
         hour=random.randint(OUVERTURE, FERMETURE - 1),
-        minute=random.randrange(60)
+        minute=random.randint(0,59)
     )
 
 MODELES = (
@@ -236,7 +236,6 @@ with psycopg.connect(
                         VALUES (
                             %s, %s, %s, %s, %s, %s, %s, %s, %s
                         )
-                        RETURNING id, prix_jour
                         """,
                         (
                             faker.unique.license_plate(), # ----------------------------- plaque d'immatriculation
@@ -247,17 +246,82 @@ with psycopg.connect(
                             faker.date_between(start_date="-10y", end_date="today"), # -- date de construction
                             round(random.uniform(15000, 80000), 2), # ------------------- Prix par jour
                             random.randint(1, SUCCURSALES), # --------------------------- succursale aléatoire
-                            Jsonb(details) # ------------------------------------------- détails supplémentaires
+                            Jsonb(details) # -------------------------------------------- détails supplémentaires
                         )
                     )
-                    voiture_id, prix_jour = cursor.fetchone()
 
-                    for _ in range(LOCATIONS):
-                        duree = random.randint(3, 30)
+        # Prix chargés une seule fois pour éviter une requête par location
+        cursor.execute("SELECT id, prix_jour FROM voiture")
+        prix_par_voiture = [(id_voiture, float(prix_jour)) for id_voiture, prix_jour in cursor.fetchall()]
+
+        for _ in range(LOCATIONS):
+                        duree_location = random.randint(1, 30)
                         date_debut = faker.date_between(start_date="-2y", end_date="today")
-                        date_fin = date_debut + datetime.timedelta(days=duree)
+                        date_fin = date_debut + datetime.timedelta(days=duree_location)
 
-                        cout = prix_jour * duree
+                        voiture_id, prix_jour = random.choice(prix_par_voiture)
+
+                        cout = prix_jour * duree_location
+
+                        chance = random.randint(1,20)
+
+                        retard = 0
+
+                        match chance:
+
+                            # Cas rare où la voiture est retournée en retard
+                            case 1:
+                                retard = random.randint(1, 3)
+                                duree_utilisation = duree_location + retard
+
+                            # cas rare où la voiture est retournée beaucoup plus tôt que prévu
+                            case 2:
+                                duree_utilisation = random.randint(1, duree_location)
+                            # Normalement, la durée d'utilisation est légèrement inférieure ou égale à la durée de location
+                            case _:
+                                duree_utilisation = duree_location - random.randint(0,1)
+                        
+                        date_retour = date_debut + datetime.timedelta(
+                            days=duree_utilisation
+                        )
+
+                        retour = datetime.datetime.combine(
+                             date_retour,
+                            heureAleatoire(),
+                        )
+
+                        if retour > datetime.datetime.now():
+                            retour = None
+
+                            if retard == 0:
+                                cursor.execute(
+                                    """
+                                    UPDATE voiture
+                                 
+                                    SET id_etat = (
+                                        SELECT id_etat
+                                        FROM etat_vehicule
+                                        WHERE nom = 'loué'
+                                    )
+                                    WHERE id_voiture = %s
+                                    """,
+                                    (voiture_id,)
+                                )
+                            else:
+                                cursor.execute(
+                                    """
+                                    UPDATE voiture
+
+                                    SET id_etat = (
+                                        SELECT id_etat
+                                        FROM etat_vehicule
+                                        WHERE nom = 'manquant'
+                                    )
+                                    WHERE id_voiture = %s
+                                    """,
+                                    (voiture_id,)
+                                )
+
 
                         paiement = {
                             "type": random.choice(["carte de crédit", "carte de débit", "comptant"]),
@@ -265,14 +329,18 @@ with psycopg.connect(
                             "numero": faker.credit_card_number(),
                         }
 
+                        client = random.randint(1, CLIENTS)
+                        succursale = random.randint(1, SUCCURSALES)
+
+                        # Facture normale de la location
                         cursor.execute(
                             """
                             INSERT INTO facture (id_client, id_succursale, date_facture, montant, montant_tps, montant_tvq, paiement)
                             VALUES (%s, %s, %s, %s, %s, %s, %s)
                             """,
                             (
-                                random.randint(1, CLIENTS), # ------ client
-                                random.randint(1, SUCCURSALES), # -- succursale
+                                client, # ------ client
+                                succursale, # -- succursale
                                 date_debut, # ---------------------- date de la facture
                                 cout,
                                 round(cout * 0.05, 2), # ----------- montant_tps
@@ -280,10 +348,99 @@ with psycopg.connect(
                                 Jsonb(paiement), # ----------------- mode de paiement
                             )
                         )
-            
-            
-            
 
-            
+                        # Location de la voiture
+                        cursor.execute(
+                            """
+                            INSERT INTO location_voiture (id_voiture, id_facture, id_loueur, date_debut, date_fin, retour, kilometrage)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            """,
+                            (
+                                voiture_id, # ----------------------------- voiture
+                                cursor.lastrowid, # ----------------------- facture
+                                client, # ------------- loueur
+                                date_debut, # ----------------------------- date de début
+                                date_fin, # ------------------------------- date de fin
+                                retour, # ----------- retour
+                                random.uniform(15 * duree_location, 55 * duree_location) # -- kilométrage
+                            )
+                        )
 
+                        # Retard
+                        penalite_retard = retard * prix_jour * 4
+
+                        # Contravention de stationnement
+                        if (random.randint(1, 20) == 1):
+                            penalite_stationnement = random.randint(10, 18) * 5
+                        else:
+                            penalite_stationnement = 0
+
+                        # Contravention pour excès de vitesse
+                        if (random.randint(1, 50) == 1):
+                            penalite_vitesse = random.randint(3, 15) * 10
+                        else:
+                            penalite_vitesse = 0
+
+                        penalite_totale = penalite_retard + penalite_stationnement + penalite_vitesse
+
+                        # Facture pour les pénalités
+                        if penalite_totale > 0:
+
+                            cursor.execute(
+                                """
+                                INSERT INTO facture (id_client, id_succursale, date_facture, montant, montant_tps, montant_tvq, paiement)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                """,
+                                (
+                                    client,
+                                    succursale,
+                                    date_retour,
+                                    penalite_totale,
+                                    round(penalite_totale * 0.05, 2),
+                                    round(penalite_totale * 0.09975, 2),
+                                    Jsonb(paiement)
+                                )
+                            )
+
+                            if penalite_retard > 0:
+                                cursor.execute(
+                                    """
+                                    INSERT INTO penalite (id_location, id_facture, montant, raison)
+                                    VALUES (%s, %s, %s, %s)
+                                    """,
+                                    (
+                                        cursor.lastrowid, # ----------------------------- location
+                                        cursor.lastrowid, # ----------------------------- facture associée à la pénalité
+                                        penalite_retard, # ----------------------- montant de la pénalité
+                                        Jsonb({'raison': 'retard', 'duree': retard}) # -- raison de la pénalité
+                                    )
+                                )
+
+                            if penalite_stationnement > 0:
+                                cursor.execute(
+                                    """
+                                    INSERT INTO penalite (id_location, id_facture, montant, raison)
+                                    VALUES (%s, %s, %s, %s)
+                                    """,
+                                    (
+                                        cursor.lastrowid, # ---------------------------------------------------------- location
+                                        cursor.lastrowid, # ---------------------------------------------------------- facture associée à la pénalité
+                                        penalite_stationnement, # ---------------------------------------------------- montant de la pénalité
+                                        Jsonb({'raison': 'contravention', 'type_contravention': 'stationnement'}) # -- raison de la pénalité
+                                    )
+                                )
+
+                            if penalite_vitesse > 0:
+                                cursor.execute(
+                                    """
+                                    INSERT INTO penalite (id_location, id_facture, montant, raison)
+                                    VALUES (%s, %s, %s, %s)
+                                    """,
+                                    (
+                                        cursor.lastrowid, # ------------------------------------------------------------ location
+                                        cursor.lastrowid, # ------------------------------------------------------------ facture associée à la pénalité
+                                        penalite_vitesse, # ------------------------------------------------------------ montant de la pénalité
+                                        Jsonb({'raison': 'contravention', 'type_contravention': 'excès devitesse'}) # -- raison de la pénalité
+                                    )
+                                )
         
