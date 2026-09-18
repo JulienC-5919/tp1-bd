@@ -8,7 +8,8 @@ import psycopg
 from psycopg.types.json import Jsonb
 from faker import Faker
 
-
+abandonnees = 0 # Locations qui n'ont pas pu être enregistrées à cause de conflits d'horaire
+silencieux = False # Ne rien écrire à la console
 
 SUCCURSALES = 25
 LOUEURS = 125
@@ -45,6 +46,24 @@ MARQUES = (
     "Porsche",
     "Mitsubishi",
 )
+
+if SUCCURSALES <= 0:
+    raise ValueError("Le nombre de succursales doit être supérieur à 0")
+
+if LOUEURS <= 0:
+    raise ValueError("Le nombre de loueurs doit être supérieur à 0")
+
+if CLIENTS <= 0:
+    raise ValueError("Le nombre de clients doit être supérieur à 0")
+
+if VOITURES <= 0:
+    raise ValueError("Le nombre de voitures doit être supérieur à 0")
+
+if LOUEURS < SUCCURSALES:
+    raise ValueError("Le nombre de loueurs doit être au moins égal au nombre de succursales")
+
+if FERMETURE <= OUVERTURE:
+    raise ValueError("L'heure de fermeture doit être supérieure à l'heure d'ouverture")
 
 def genererNumeroSerie():
     lettres = "".join(random.choices(string.ascii_uppercase, k=2))
@@ -148,11 +167,19 @@ with psycopg.connect(
                 "INSERT INTO succursale (adresse) VALUES (%s)",
                 (Jsonb(adresse),),
             )
+        if (not silencieux):
+            print(f"{SUCCURSALES} succursales créées.")
 
-        for _ in range(LOUEURS):
+        for i in range(LOUEURS):
             nom = faker.last_name()
             prenom = faker.first_name()
             salaire_heure = round(random.uniform(17, 47), 2)
+
+            if i < SUCCURSALES:
+                succursale = i + 1 # Éviter qu'une succursale n'ait aucun loueur
+            else:
+                succursale = random.randint(1, SUCCURSALES) # Assigner aléatoirement les loueurs au reste des succursales
+
             contact = {
                 "email": faker.email(),
                 "telephone": faker.phone_number(),
@@ -168,8 +195,20 @@ with psycopg.connect(
                 INSERT INTO loueur(nom, prenom, salaire_heure, id_succursale, contact)
                 VALUES (%s, %s, %s, %s, %s)
                 """,
-                (nom, prenom, salaire_heure, random.randint(1, SUCCURSALES), Jsonb(contact)),
-            )
+                (
+                    nom,
+                    prenom,
+                    salaire_heure,
+                    succursale,
+                    Jsonb(contact)),
+                )
+        if (not silencieux):
+            print(f"{LOUEURS} loueurs créés.")
+
+        cursor.execute("SELECT id, id_succursale FROM loueur")
+        loueurs_par_succursale = {succursale_id: [] for succursale_id in range(1, SUCCURSALES + 1)}
+        for loueur_id, succursale_id in cursor.fetchall():
+            loueurs_par_succursale[succursale_id].append(loueur_id)
 
         for _ in range(CLIENTS):
             contact = {
@@ -193,6 +232,8 @@ with psycopg.connect(
                     Jsonb(contact)
                 ),
             )
+        if (not silencieux):
+            print(f"{CLIENTS} clients créés.")
 
         
 
@@ -204,6 +245,8 @@ with psycopg.connect(
                 """,
                 (marque,)
             )
+        if (not silencieux):
+            print(f"{len(MARQUES)} marques créées.")
 
         for modele in MODELES:
             cursor.execute(
@@ -226,6 +269,8 @@ with psycopg.connect(
                 )
 
             )
+        if (not silencieux):
+            print(f"{len(MODELES)} modèles de voiture créés.") 
 
         for _ in range(VOITURES):
                         
@@ -253,21 +298,71 @@ with psycopg.connect(
                             Jsonb(details) # -------------------------------------------- détails supplémentaires
                         )
                     )
+        if (not silencieux):
+            print(f"{VOITURES} voitures créées.")
 
         # Prix chargés une seule fois pour éviter une requête par location
-        cursor.execute("SELECT id, prix_jour FROM voiture")
-        prix_par_voiture = [(id_voiture, float(prix_jour)) for id_voiture, prix_jour in cursor.fetchall()]
+        cursor.execute("SELECT id, prix_jour, id_succursale FROM voiture")
+        prix_par_voiture = [
+            (id_voiture, float(prix_jour), id_succursale)
+            for id_voiture, prix_jour, id_succursale in cursor.fetchall()
+        ]
 
         for _ in range(LOCATIONS):
-                        client = random.randint(1, CLIENTS)
-                        succursale = random.randint(1, SUCCURSALES)
 
-                        voiture_id, prix_jour = random.choice(prix_par_voiture)
+                        voiture_id, prix_jour, succursale = random.choice(prix_par_voiture)
                         
                         duree_location = random.randint(1, 30)
                         date_debut = faker.date_between(start_date="-2y", end_date="today")
                         date_fin = date_debut + datetime.timedelta(days=duree_location)
 
+                        abandonner = False # Conflit d'horaire impossible à résoudre
+
+                        # Recherche de conflits horaire
+                        while True:
+                            cursor.execute(
+                                """
+                               SELECT date_debut, date_fin
+                               FROM location_voiture
+                                WHERE id_voiture = %s
+                                  AND date_debut <= %s
+                                  AND date_fin >= %s
+                                ORDER BY date_debut
+                                """,
+                                (voiture_id, date_fin, date_debut),
+                            )
+
+                            conflit = cursor.fetchone()
+
+                            if conflit is None:
+                                break
+
+                            debut_existant, fin_existant = conflit
+
+                            if debut_existant <= date_debut <= fin_existant:
+                                # La nouvelle location commence pendant l'ancienne.
+                                date_debut = fin_existant + datetime.timedelta(days=1)
+
+                            elif debut_existant <= date_fin <= fin_existant:
+                                # La nouvelle location finit pendant l'ancienne.
+                                date_fin = debut_existant - datetime.timedelta(days=1)
+
+                            else:
+                                # La nouvelle location englobe entièrement l'ancienne.
+                                abandonnees += 1
+                                abandonner = True
+                                break
+
+                            if date_debut > date_fin:
+                                abandonnees += 1
+                                abandonner = True
+                                break
+                        # Fin de la recherche de conflits horaire
+
+                        if abandonner:
+                            continue
+
+                        client = random.randint(1, CLIENTS)
                         cout = prix_jour * duree_location
 
                         chance = random.randint(1,20)
@@ -362,7 +457,7 @@ with psycopg.connect(
                             (
                                 voiture_id, # ----------------------------------------------- voiture
                                 cursor.fetchone()[0], # ------------------------------------- facture
-                                random.randint(1, LOUEURS), # ------------------------------- loueur
+                                random.choice(loueurs_par_succursale[succursale]), # -------- loueur de la même succursale
                                 date_debut, # ----------------------------------------------- date de début
                                 date_fin, # ------------------------------------------------- date de fin
                                 retour, # --------------------------------------------------- Date et heure du retour
@@ -452,4 +547,10 @@ with psycopg.connect(
                                         Jsonb({'raison': 'contravention', 'type_contravention': 'excès devitesse'}) # -- raison de la pénalité
                                     )
                                 )
+
+
+if (abandonnees > 0):
+    print(f"{abandonnees} locations n'ont pas pu être enregistrées.")
+else:
+    print("Toutes les locations ont été enregistrées avec succès.")
         
