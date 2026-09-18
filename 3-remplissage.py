@@ -8,7 +8,6 @@ import psycopg
 from psycopg.types.json import Jsonb
 from faker import Faker
 
-abandonnees = 0 # Locations qui n'ont pas pu être enregistrées à cause de conflits d'horaire
 silencieux = False # Ne rien écrire à la console
 
 SUCCURSALES = 25
@@ -23,6 +22,7 @@ FERMETURE = 17 # heure de fermeture des succursales : 5:00 PM
 
 CHANCE_AMENDE_STATIONNEMENT = 20 # 1/20 chance qu'il y ait une contravention de stationnement pour une location donnée
 CHANCE_AMENDE_VITESSE = 50 # 1/50 chance qu'il y ait une contravention pour excès de vitesse pour une location donnée
+# Les clients ne font vraiment pas attention haha
 
 MARQUES = (
     "Toyota",
@@ -46,6 +46,8 @@ MARQUES = (
     "Porsche",
     "Mitsubishi",
 )
+
+abandonnees = 0 # Locations qui n'ont pas pu être enregistrées à cause de conflits d'horaire
 
 if SUCCURSALES <= 0:
     raise ValueError("Le nombre de succursales doit être supérieur à 0")
@@ -544,7 +546,7 @@ with psycopg.connect(
                                         id_location, # ----------------------------------------------------------------- location
                                         facture_penalite, # ------------------------------------------------------------ facture associée à la pénalité
                                         penalite_vitesse, # ------------------------------------------------------------ montant de la pénalité
-                                        Jsonb({'raison': 'contravention', 'type_contravention': 'excès devitesse'}) # -- raison de la pénalité
+                                        Jsonb({'raison': 'contravention', 'type_contravention': 'excès de vitesse'}) # -- raison de la pénalité
                                     )
                                 )
 
