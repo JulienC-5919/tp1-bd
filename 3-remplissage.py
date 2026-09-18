@@ -259,18 +259,19 @@ with psycopg.connect(
         prix_par_voiture = [(id_voiture, float(prix_jour)) for id_voiture, prix_jour in cursor.fetchall()]
 
         for _ in range(LOCATIONS):
+                        client = random.randint(1, CLIENTS)
+                        succursale = random.randint(1, SUCCURSALES)
+
+                        voiture_id, prix_jour = random.choice(prix_par_voiture)
+                        
                         duree_location = random.randint(1, 30)
                         date_debut = faker.date_between(start_date="-2y", end_date="today")
                         date_fin = date_debut + datetime.timedelta(days=duree_location)
 
-                        voiture_id, prix_jour = random.choice(prix_par_voiture)
-
                         cout = prix_jour * duree_location
 
                         chance = random.randint(1,20)
-
                         retard = 0
-
                         match chance:
 
                             # Cas rare où la voiture est retournée en retard
@@ -332,9 +333,6 @@ with psycopg.connect(
                             "fournisseur": faker.credit_card_provider(),
                             "numero": faker.credit_card_number(),
                         }
-
-                        client = random.randint(1, CLIENTS)
-                        succursale = random.randint(1, SUCCURSALES)
 
                         # Facture normale de la location
                         cursor.execute(
