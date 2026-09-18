@@ -5,7 +5,6 @@ import random
 import string
 
 import psycopg
-from psycopg import sql
 from psycopg.types.json import Jsonb
 from faker import Faker
 
@@ -14,11 +13,15 @@ from faker import Faker
 SUCCURSALES = 25
 LOUEURS = 125
 CLIENTS = 4000
-VOITURES = 500
-LOCATIONS = 10000
+VOITURES = 600
+LOCATIONS = 6000
 
-OUVERTURE = 9
-FERMETURE = 17
+# Les voitures ne pourront pas être louées ou remises en dehors des heures d'ouverture.
+OUVERTURE = 9 # heure d'ouverture des succursales : 9:00 AM
+FERMETURE = 17 # heure de fermeture des succursales : 5:00 PM
+
+CHANCE_AMENDE_STATIONNEMENT = 20 # 1/20 chance qu'il y ait une contravention de stationnement pour une location donnée
+CHANCE_AMENDE_VITESSE = 50 # 1/50 chance qu'il y ait une contravention pour excès de vitesse pour une location donnée
 
 MARQUES = (
     "Toyota",
@@ -125,8 +128,9 @@ with psycopg.connect(
                 marque,
                 client,
                 loueur,
-                succursale
-            RESTART IDENTITY CASCADE
+                succursale,
+                penalite
+            RESTART IDENTITY
             """
         )
 
@@ -303,7 +307,7 @@ with psycopg.connect(
                                         FROM etat_vehicule
                                         WHERE nom = 'loué'
                                     )
-                                    WHERE id_voiture = %s
+                                    WHERE id = %s
                                     """,
                                     (voiture_id,)
                                 )
@@ -317,7 +321,7 @@ with psycopg.connect(
                                         FROM etat_vehicule
                                         WHERE nom = 'manquant'
                                     )
-                                    WHERE id_voiture = %s
+                                    WHERE id = %s
                                     """,
                                     (voiture_id,)
                                 )
@@ -337,15 +341,16 @@ with psycopg.connect(
                             """
                             INSERT INTO facture (id_client, id_succursale, date_facture, montant, montant_tps, montant_tvq, paiement)
                             VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            RETURNING id
                             """,
                             (
-                                client, # ------ client
-                                succursale, # -- succursale
-                                date_debut, # ---------------------- date de la facture
-                                cout,
-                                round(cout * 0.05, 2), # ----------- montant_tps
-                                round(cout * 0.09975, 2), # -------- montant_tvq
-                                Jsonb(paiement), # ----------------- mode de paiement
+                                client, # -------------------- client
+                                succursale, # ---------------- succursale
+                                date_debut, # ---------------- date de la facture
+                                cout, # ---------------------- coût de la location
+                                round(cout * 0.05, 2), # ----- montant_tps
+                                round(cout * 0.09975, 2), # -- montant_tvq
+                                Jsonb(paiement), # ----------- mode de paiement
                             )
                         )
 
@@ -354,14 +359,15 @@ with psycopg.connect(
                             """
                             INSERT INTO location_voiture (id_voiture, id_facture, id_loueur, date_debut, date_fin, retour, kilometrage)
                             VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            RETURNING id
                             """,
                             (
-                                voiture_id, # ----------------------------- voiture
-                                cursor.lastrowid, # ----------------------- facture
-                                client, # ------------- loueur
-                                date_debut, # ----------------------------- date de début
-                                date_fin, # ------------------------------- date de fin
-                                retour, # ----------- retour
+                                voiture_id, # ----------------------------------------------- voiture
+                                cursor.fetchone()[0], # ------------------------------------- facture
+                                random.randint(1, LOUEURS), # ------------------------------- loueur
+                                date_debut, # ----------------------------------------------- date de début
+                                date_fin, # ------------------------------------------------- date de fin
+                                retour, # --------------------------------------------------- Date et heure du retour
                                 random.uniform(15 * duree_location, 55 * duree_location) # -- kilométrage
                             )
                         )
@@ -370,14 +376,14 @@ with psycopg.connect(
                         penalite_retard = retard * prix_jour * 4
 
                         # Contravention de stationnement
-                        if (random.randint(1, 20) == 1):
+                        if (random.randint(1, CHANCE_AMENDE_STATIONNEMENT) == 1):
                             penalite_stationnement = random.randint(10, 18) * 5
                         else:
                             penalite_stationnement = 0
 
                         # Contravention pour excès de vitesse
-                        if (random.randint(1, 50) == 1):
-                            penalite_vitesse = random.randint(3, 15) * 10
+                        if (random.randint(1, CHANCE_AMENDE_VITESSE) == 1):
+                            penalite_vitesse = random.randint(5, 16) * 10
                         else:
                             penalite_vitesse = 0
 
@@ -386,10 +392,13 @@ with psycopg.connect(
                         # Facture pour les pénalités
                         if penalite_totale > 0:
 
+                            id_location = cursor.fetchone()[0]
+
                             cursor.execute(
                                 """
                                 INSERT INTO facture (id_client, id_succursale, date_facture, montant, montant_tps, montant_tvq, paiement)
                                 VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                RETURNING id
                                 """,
                                 (
                                     client,
@@ -402,6 +411,8 @@ with psycopg.connect(
                                 )
                             )
 
+                            facture_penalite = cursor.fetchone()[0]
+
                             if penalite_retard > 0:
                                 cursor.execute(
                                     """
@@ -409,9 +420,9 @@ with psycopg.connect(
                                     VALUES (%s, %s, %s, %s)
                                     """,
                                     (
-                                        cursor.lastrowid, # ----------------------------- location
-                                        cursor.lastrowid, # ----------------------------- facture associée à la pénalité
-                                        penalite_retard, # ----------------------- montant de la pénalité
+                                        id_location, # ---------------------------------- location
+                                        facture_penalite, # ----------------------------- facture associée à la pénalité
+                                        penalite_retard, # ------------------------------ montant de la pénalité
                                         Jsonb({'raison': 'retard', 'duree': retard}) # -- raison de la pénalité
                                     )
                                 )
@@ -423,8 +434,8 @@ with psycopg.connect(
                                     VALUES (%s, %s, %s, %s)
                                     """,
                                     (
-                                        cursor.lastrowid, # ---------------------------------------------------------- location
-                                        cursor.lastrowid, # ---------------------------------------------------------- facture associée à la pénalité
+                                        id_location, # --------------------------------------------------------------- location
+                                        facture_penalite, # ---------------------------------------------------------- facture associée à la pénalité
                                         penalite_stationnement, # ---------------------------------------------------- montant de la pénalité
                                         Jsonb({'raison': 'contravention', 'type_contravention': 'stationnement'}) # -- raison de la pénalité
                                     )
@@ -437,8 +448,8 @@ with psycopg.connect(
                                     VALUES (%s, %s, %s, %s)
                                     """,
                                     (
-                                        cursor.lastrowid, # ------------------------------------------------------------ location
-                                        cursor.lastrowid, # ------------------------------------------------------------ facture associée à la pénalité
+                                        id_location, # ----------------------------------------------------------------- location
+                                        facture_penalite, # ------------------------------------------------------------ facture associée à la pénalité
                                         penalite_vitesse, # ------------------------------------------------------------ montant de la pénalité
                                         Jsonb({'raison': 'contravention', 'type_contravention': 'excès devitesse'}) # -- raison de la pénalité
                                     )
