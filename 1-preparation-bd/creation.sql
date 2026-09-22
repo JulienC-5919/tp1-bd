@@ -1,6 +1,16 @@
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 CREATE TABLE succursale (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    adresse jsonb NOT NULL -- Rue, ville, code postal, pays
+    adresse jsonb NOT NULL UNIQUE, -- Rue, ville, code postal, pays
+
+    -- La première lettre du pays et de la ville doit être en majuscule
+    CONSTRAINT adresse_premiere_lettre_majuscule CHECK (
+        (adresse->>'pays') <> ''
+        AND (adresse->>'ville') <> ''
+        AND left(adresse->>'pays', 1) = upper(left(adresse->>'pays', 1))
+        AND left(adresse->>'ville', 1) = upper(left(adresse->>'ville', 1))
+    )
 );
 
 CREATE TABLE loueur (
@@ -12,6 +22,16 @@ CREATE TABLE loueur (
     contact JSONB NOT NULL -- Email, téléphone, etc.
 );
 
+CREATE UNIQUE INDEX loueur_email_unique
+    ON loueur (lower(contact->>'email'))
+    WHERE contact->>'email' IS NOT NULL;
+
+CREATE UNIQUE INDEX loueur_telephone_unique
+    ON loueur (contact->>'telephone')
+    WHERE contact->>'telephone' IS NOT NULL;
+
+
+
 CREATE TABLE client (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nom VARCHAR(255) NOT NULL,
@@ -19,34 +39,44 @@ CREATE TABLE client (
     contact JSONB NOT NULL -- Email, téléphone, etc.
 );
 
+CREATE UNIQUE INDEX client_email_unique
+    ON client (lower(contact->>'email'))
+    WHERE contact->>'email' IS NOT NULL;
+
+CREATE UNIQUE INDEX client_telephone_unique
+    ON client (contact->>'telephone')
+    WHERE contact->>'telephone' IS NOT NULL;
+
+
+
 CREATE TABLE marque (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    nom VARCHAR(63) NOT NULL
+    nom VARCHAR(63) NOT NULL UNIQUE
 );
 
 CREATE TABLE type_voiture (
-    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    nom VARCHAR(31) NOT NULL
+    id SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nom VARCHAR(31) NOT NULL UNIQUE
 );
 
 CREATE TABLE modele_voiture (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nom VARCHAR(63) NOT NULL,
     id_marque INT NOT NULL REFERENCES marque(id),
-    id_type INT NOT NULL REFERENCES type_voiture(id),
+    id_type SMALLINT NOT NULL REFERENCES type_voiture(id),
     details JSONB NOT NULL -- Dimensions, année, etc.
 );
 
 CREATE TABLE etat_vehicule (
     id SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    nom VARCHAR(15) NOT NULL
+    nom VARCHAR(15) NOT NULL UNIQUE
 ) ;
 
 CREATE TABLE voiture (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     plaque VARCHAR(15) NOT NULL UNIQUE,
     id_modele INT NOT NULL REFERENCES modele_voiture(id),
-    no_serie VARCHAR(17) NOT NULL UNIQUE,
+    no_serie VARCHAR(17) NOT NULL,
     id_etat SMALLINT NOT NULL REFERENCES etat_vehicule(id),
     kilometrage INT NOT NULL,
     date_construction DATE NOT NULL,
@@ -63,7 +93,13 @@ CREATE TABLE facture (
     montant DECIMAL(10, 2) NOT NULL,
     montant_tps DECIMAL(10, 2) NOT NULL,
     montant_tvq DECIMAL(10, 2) NOT NULL,
-    paiement JSONB NOT NULL -- Type de carte, numéro? etc.
+    paiement JSONB NOT NULL, -- Type de carte, numéro? etc.
+
+    CONSTRAINT montants_non_negatifs CHECK (
+        montant >= 0
+        AND montant_tps >= 0
+        AND montant_tvq >= 0
+    )
 );
 
 -- Éventuellement permettre de louer plusieurs véhicules dans une seule facture
@@ -75,7 +111,17 @@ CREATE TABLE location_voiture (
     date_debut DATE NOT NULL,
     date_fin DATE NOT NULL,
     retour TIMESTAMP,
-    kilometrage DECIMAL(8, 2) NOT NULL
+    kilometrage DECIMAL(8, 2) NOT NULL,
+
+    CONSTRAINT dates_location_valides CHECK (date_debut <= date_fin),
+    CONSTRAINT voiture_dates_non_chevauchantes EXCLUDE USING GIST (
+        id_voiture WITH =,
+        daterange(date_debut, date_fin, '[]') WITH &&
+    ),
+
+    CONSTRAINT retour_apres_debut CHECK (retour IS NULL OR retour >= date_debut),
+
+    CONSTRAINT kilometrage_non_negatif CHECK (kilometrage >= 0)
 );
 
 CREATE TABLE penalite (
