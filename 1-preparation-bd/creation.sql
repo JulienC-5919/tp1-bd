@@ -81,8 +81,7 @@ CREATE TABLE voiture (
     kilometrage INT NOT NULL,
     date_construction DATE NOT NULL,
     prix_jour DECIMAL(10, 2) NOT NULL,
-    id_succursale INT NOT NULL REFERENCES succursale(id),
-    details JSONB NOT NULL -- Couleur, pièces, prix pour longue période, prix par km, etc.
+    id_succursale INT NOT NULL REFERENCES succursale(id)
 );
 
 CREATE TABLE facture (

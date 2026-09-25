@@ -276,11 +276,6 @@ with psycopg.connect(
 
         for _ in range(VOITURES):
                         
-                    details = {
-                        "kilometrage": random.randint(0, 200000),
-                        "carburant": random.choice(["essence", "diesel", "électrique", "hybride"]),
-                        "transmission": random.choice(["manuelle", "automatique"]),
-                    }
                     cursor.execute(
                         """
                         INSERT INTO voiture(plaque, id_modele, no_serie, id_etat, kilometrage, date_construction, prix_jour, id_succursale, details)
@@ -296,8 +291,7 @@ with psycopg.connect(
                             random.randint(0, 200000), # -------------------------------- kilometrage
                             faker.date_between(start_date="-10y", end_date="today"), # -- date de construction
                             round(random.uniform(15000, 80000), 2), # ------------------- Prix par jour
-                            random.randint(1, SUCCURSALES), # --------------------------- succursale aléatoire
-                            Jsonb(details) # -------------------------------------------- détails supplémentaires
+                            random.randint(1, SUCCURSALES) # --------------------------- succursale aléatoire
                         )
                     )
         if (not silencieux):
