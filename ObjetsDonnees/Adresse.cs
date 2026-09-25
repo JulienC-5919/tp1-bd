@@ -14,14 +14,6 @@ public class Adresse : ObjetDonneesJson
 
     public string CodePostalAffichage => CodePostal ?? "inconnu";
 
-    public Adresse(string pays, string rue, string ville, string? codePostal)
-    {
-        Pays = pays;
-        Rue = rue;
-        Ville = ville;
-        CodePostal = codePostal;
-    }
-
     public override string ToString()
     {
         return Rue; // Affiche uniquement la rue de l'adresse, pour les petites cases.

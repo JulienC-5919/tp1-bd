@@ -1,28 +1,29 @@
 using System.Data;
+using Npgsql;
 
 class GestionBD
 {
     private string connectionString;
 
-    public GestionBD(String serveur, String baseDeDonnees, String utilisateur, String motDePasse)
+    public GestionBD(String host, String port, String database, String user, String password)
     {
-        connectionString = $"Server={serveur};Database={baseDeDonnees};User Id={utilisateur};Password={motDePasse};";
+        connectionString = $"Host={host};Port={port};Database={database};Username={user};Password={password};";
     }
 
-    public void reconnecter(String serveur, String baseDeDonnees, String utilisateur, String motDePasse)
+    public void reconnecter(String host, String port, String database, String user, String password)
     {
-        connectionString = $"Server={serveur};Database={baseDeDonnees};User Id={utilisateur};Password={motDePasse};";
+        connectionString = $"Host={host};Port={port};Database={database};Username={user};Password={password};";
     }
 
     private bool ajout(string commande, params object[] parametres)
 {
     try
     {
-        using (var connection = new System.Data.SqlClient.SqlConnection(connectionString))
+        using (var connection = new Npgsql.NpgsqlConnection(connectionString))
         {
             connection.Open();
 
-            using (var command = new System.Data.SqlClient.SqlCommand(commande, connection))
+            using (var command = new Npgsql.NpgsqlCommand(commande, connection))
             {
                 for (int i = 0; i < parametres.Length; i++)
                     command.Parameters.AddWithValue($"@param{i}", parametres[i]);

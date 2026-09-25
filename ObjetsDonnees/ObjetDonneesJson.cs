@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 public abstract class ObjetDonneesJson : ObjetDonnees
 {
     protected abstract object JsonRepresentation { get; }

@@ -11,4 +11,12 @@ public class ModeleVoiture : ObjetDonneesSql
     public TypeVoiture Type { get; set; }
 
     public short? Annee { get; set; }
+
+    public ModeleVoiture(string nom, string marque, TypeVoiture type, short? annee)
+    {
+        Nom = nom;
+        Marque = marque;
+        Type = type;
+        Annee = annee;
+    }
 }
