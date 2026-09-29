@@ -19,7 +19,22 @@ CREATE TABLE loueur (
     prenom VARCHAR(255) NOT NULL,
     salaire_heure DECIMAL(10, 2) NOT NULL,
     id_succursale INT NOT NULL REFERENCES succursale(id),
-    contact JSONB NOT NULL -- Email, téléphone, etc.
+    contact JSONB NOT NULL, -- Email, téléphone, etc.
+
+    CONSTRAINT contact_non_vide CHECK (
+        (contact->>'email') <> ''
+        OR (contact->>'telephone') <> ''
+    ),
+
+    CONSTRAINT prenom_valide CHECK (
+        char_length(btrim(prenom)) >= 2
+        AND btrim(prenom) ~ '^[[:alpha:]].*[[:alpha:]]$'
+    ),
+
+    CONSTRAINT nom_valide CHECK (
+        char_length(btrim(nom)) >= 2
+        AND btrim(nom) ~ '^[[:alpha:]].*[[:alpha:]]$'
+    )
 );
 
 CREATE UNIQUE INDEX loueur_email_unique
@@ -27,7 +42,7 @@ CREATE UNIQUE INDEX loueur_email_unique
     WHERE contact->>'email' IS NOT NULL;
 
 CREATE UNIQUE INDEX loueur_telephone_unique
-    ON loueur (contact->>'telephone')
+    ON loueur ((contact->>'telephone'))
     WHERE contact->>'telephone' IS NOT NULL;
 
 
@@ -36,7 +51,22 @@ CREATE TABLE client (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nom VARCHAR(255) NOT NULL,
     prenom VARCHAR(255) NOT NULL,
-    contact JSONB NOT NULL -- Email, téléphone, etc.
+    contact JSONB NOT NULL, -- Email, téléphone, etc.
+
+    CONSTRAINT contact_non_vide CHECK (
+        (contact->>'email') <> ''
+        OR (contact->>'telephone') <> ''
+    ),
+
+    CONSTRAINT prenom_valide CHECK (
+        char_length(btrim(prenom)) >= 2
+        AND btrim(prenom) ~ '^[[:alpha:]].*[[:alpha:]]$'
+    ),
+
+    CONSTRAINT nom_valide CHECK (
+        char_length(btrim(nom)) >= 2
+        AND btrim(nom) ~ '^[[:alpha:]].*[[:alpha:]]$'
+    )
 );
 
 CREATE UNIQUE INDEX client_email_unique
@@ -44,7 +74,7 @@ CREATE UNIQUE INDEX client_email_unique
     WHERE contact->>'email' IS NOT NULL;
 
 CREATE UNIQUE INDEX client_telephone_unique
-    ON client (contact->>'telephone')
+    ON client ((contact->>'telephone'))
     WHERE contact->>'telephone' IS NOT NULL;
 
 
