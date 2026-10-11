@@ -134,7 +134,7 @@ MODELES = (
 )
 
 with psycopg.connect(
-    "dbname=tp1_julien user=robot password=yfzvjp9y3s9j37q"
+    "dbname=tp1_julien user=robot password=yfzvjp9y3s9j37q host=localhost port=5432"
 ) as conn:
     with conn.cursor() as cursor:
 
@@ -160,7 +160,7 @@ with psycopg.connect(
         faker = Faker("fr_CA")
         for _ in range(SUCCURSALES):
             adresse = {
-                "rue": faker.street_address(),
+                "rue": faker.unique.street_address(),
                 "ville": faker.city(),
                 "code_postal": faker.postcode(),
                 "pays": "Canada",
@@ -183,10 +183,10 @@ with psycopg.connect(
                 succursale = random.randint(1, SUCCURSALES) # Assigner aléatoirement les loueurs au reste des succursales
 
             contact = {
-                "email": faker.email(),
-                "telephone": faker.phone_number(),
+                "email": faker.unique.email(),
+                "telephone": faker.unique.phone_number(),
                 "adresse": {
-                    "rue": faker.street_address(),
+                    "rue": faker.unique.street_address(),
                     "ville": faker.city(),
                     "code_postal": faker.postcode(),
                     "pays": "Canada",
@@ -214,10 +214,10 @@ with psycopg.connect(
 
         for _ in range(CLIENTS):
             contact = {
-                "email": faker.email(),
-                "telephone": faker.phone_number(),
+                "email": faker.unique.email(),
+                "telephone": faker.unique.phone_number(),
                 "adresse": {
-                    "rue": faker.street_address(),
+                    "rue": faker.unique.street_address(),
                     "ville": faker.city(),
                     "code_postal": faker.postcode(),
                     "pays": "Canada",
@@ -278,9 +278,9 @@ with psycopg.connect(
                         
                     cursor.execute(
                         """
-                        INSERT INTO voiture(plaque, id_modele, no_serie, id_etat, kilometrage, date_construction, prix_jour, id_succursale, details)
+                        INSERT INTO voiture(plaque, id_modele, no_serie, id_etat, kilometrage, date_construction, prix_jour, id_succursale)
                         VALUES (
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s
+                            %s, %s, %s, %s, %s, %s, %s, %s
                         )
                         """,
                         (
@@ -422,7 +422,7 @@ with psycopg.connect(
                         paiement = {
                             "type": random.choice(["carte de crédit", "carte de débit", "comptant"]),
                             "fournisseur": faker.credit_card_provider(),
-                            "numero": faker.credit_card_number(),
+                            "numero": faker.unique.credit_card_number(),
                         }
 
                         # Facture normale de la location
