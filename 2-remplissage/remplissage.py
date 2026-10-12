@@ -291,7 +291,7 @@ with psycopg.connect(
                             random.randint(0, 200000), # -------------------------------- kilometrage
                             faker.date_between(start_date="-10y", end_date="today"), # -- date de construction
                             round(random.uniform(15000, 80000), 2), # ------------------- Prix par jour
-                            random.randint(1, SUCCURSALES) # --------------------------- succursale aléatoire
+                            random.randint(1, SUCCURSALES) # ---------------------------- succursale aléatoire
                         )
                     )
         if (not silencieux):
