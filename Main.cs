@@ -16,7 +16,7 @@ public enum EtatVehicule
 class Program
 {
     public static NpgsqlConnectionStringBuilder connectionStringBuilder = new NpgsqlConnectionStringBuilder();
-    public static NpgsqlConnection? connection;
+    public static NpgsqlConnection connection = new NpgsqlConnection(connectionStringBuilder.ConnectionString);
     public static bool connectionOpened = false;
 
     public static string utilisateur = "robot";
@@ -51,8 +51,6 @@ class Program
         else connectionStringBuilder.Database = prompt("(tp1_julien par défaut) Base de données: ", "tp1_julien");
         
         connectionStringBuilder.Password = EntrerMdp();
-
-        connection = new NpgsqlConnection(connectionStringBuilder.ConnectionString);
         
         connect();
 
