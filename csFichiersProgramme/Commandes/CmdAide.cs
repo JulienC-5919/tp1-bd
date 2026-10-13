@@ -1,5 +1,8 @@
+
+
 public class CmdAide : Commande
 {
+    const int LARGEUR_COLONNE = 21;
     public void Executer(string[] args)
     {
         Console.WriteLine();
@@ -10,21 +13,21 @@ public class CmdAide : Commande
                 case "fr":
                     for (int i = 0; i < Program.commandes.Length; i++)
                     {
-                        Console.WriteLine(Program.commandes[i].NomFr + " : " + Program.commandes[i].AideCourte);
+                        aidePourCommande(Program.commandes[i], Program.commandes[i].NomFr);
                     }
                     break;
 
                 case "en":
                     for (int i = 0; i < Program.commandes.Length; i++)
                     {
-                        Console.WriteLine(Program.commandes[i].NomEn + " : " + Program.commandes[i].AideCourte);
+                        aidePourCommande(Program.commandes[i], Program.commandes[i].NomEn);
                     }
                     break;
 
                 case "abb":
                     for (int i = 0; i < Program.commandes.Length; i++)
                     {
-                        Console.WriteLine(Program.commandes[i].NomAbb + " : " + Program.commandes[i].AideCourte);
+                        aidePourCommande(Program.commandes[i], Program.commandes[i].NomAbb);
                     }
                     break;
 
@@ -45,7 +48,7 @@ public class CmdAide : Commande
                     {
                         for (int i = 0; i < Program.commandes.Length; i++)
                         {
-                            Console.WriteLine(Program.commandes[i].NomFr + " : " + Program.commandes[i].AideCourte);
+                            aidePourCommande(Program.commandes[i], Program.commandes[i].NomFr);
                         }
                     }
                     break;
@@ -55,7 +58,7 @@ public class CmdAide : Commande
         {
             for (int i = 0; i < Program.commandes.Length; i++)
             {
-                Console.WriteLine(Program.commandes[i].NomFr + " : " + Program.commandes[i].AideCourte);
+                aidePourCommande(Program.commandes[i], Program.commandes[i].NomFr);
             }
         }
     }
@@ -66,4 +69,13 @@ public class CmdAide : Commande
     public string NomFr => "aide";
     public string NomEn => "help";
     public string NomAbb => "?";
+
+    private void aidePourCommande(Commande commande, string nom)
+    {
+        Console.WriteLine(
+            nom
+            + new string(' ', LARGEUR_COLONNE - nom.Length)
+            + ": "
+            + commande.AideCourte);
+    }
 }

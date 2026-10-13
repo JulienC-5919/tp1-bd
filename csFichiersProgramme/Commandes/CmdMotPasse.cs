@@ -15,8 +15,8 @@ public class CmdMotDePasse : Commande
     }
     
 
-    public string AideCourte => "Change le mot de passe du serveur de base de données.";
-    public string AideLongue => ": Change le mot de passe du serveur de base de données.";
+    public string AideCourte => "Change le mot de passe de connexion à la base de données.";
+    public string AideLongue => ": Change le mot de passe de connexion à la base de données.";
     public string NomFr => "motpasse";
     public string NomEn => "password";
     public string NomAbb => "mdp";
