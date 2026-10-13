@@ -1,3 +1,5 @@
+using System.Numerics;
+
 public enum TypeVoiture
 {
     Berline,
@@ -10,9 +12,12 @@ public enum TypeVoiture
 
 public class ModeleVoiture : AffichableGrille
 {
-    public string Nom { get; set; }
-    public String Marque { get; set; }
+    public required string Nom { get; set; }
+    public required String Marque { get; set; }
+    public required TypeVoiture Type { get; set; }
 
+    public short? Annee { get; set; }
+    public Vector3? dimensions { get; set; }
 
     public override string[] Donnees => throw new NotImplementedException();
 
