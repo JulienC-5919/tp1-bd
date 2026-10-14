@@ -16,8 +16,10 @@ public enum EtatVehicule
 class Program
 {
     public static NpgsqlConnectionStringBuilder connectionStringBuilder = new NpgsqlConnectionStringBuilder();
-    public static NpgsqlConnection connection = new NpgsqlConnection(connectionStringBuilder.ConnectionString);
+    public static NpgsqlConnection? connection = null;
     public static bool connectionOpened = false;
+
+    public static Succursale? succursale = null;
 
     public static string utilisateur = "robot";
     public static Commande[] commandes = new Commande[] {
@@ -27,10 +29,12 @@ class Program
         new CmdHote(),
         new CmdUtilisateur(),
         new CmdBaseDonnees(),
+        new CmdConnecter(),
     };
 
     public static Commande[] commandesBd = new Commande[] {
-        
+        new CmdSuccursales(),
+        new CmdSuccursale()
     };
     static void Main(string[] args)
     {
@@ -51,7 +55,8 @@ class Program
         else connectionStringBuilder.Database = prompt("(tp1_julien par défaut) Base de données: ", "tp1_julien");
         
         connectionStringBuilder.Password = EntrerMdp();
-        
+
+        connection = new NpgsqlConnection(connectionStringBuilder.ConnectionString);
         connect();
 
         while (true)
@@ -63,17 +68,33 @@ class Program
 
             foreach (Commande v in Program.commandes)
             {
-                if (v.NomFr.ToLower() == args2[0].ToLower() ||
-                    v.NomEn.ToLower() == args2[0].ToLower() ||
-                    v.NomAbb.ToLower() == args2[0].ToLower())
+                if (v.NomFr == args2[0].ToLower() ||
+                    v.NomEn == args2[0].ToLower() ||
+                    v.NomAbb == args2[0].ToLower())
                 {
                     v.Executer(args2.Skip(1).ToArray());
                     commandeReussie = true;
                     break;
                 }
             }
-            if (!commandeReussie)
+            if (!commandeReussie) foreach (Commande v in Program.commandesBd)
             {
+                if (v.NomFr == args2[0].ToLower() ||
+                    v.NomEn == args2[0].ToLower() ||
+                    v.NomAbb == args2[0].ToLower())
+                {
+
+                    if (!Program.connectionOpened) {
+                        Console.WriteLine("Vous devez être connecté à la base de données pour utiliser cette commande.");
+                        break;
+                    }
+
+                    v.Executer(args2.Skip(1).ToArray());
+                    commandeReussie = true;
+                    break;
+                }
+            }
+            if (!commandeReussie) {
                 Console.WriteLine(args2[0] + ": Commande inconnue, écrivez 'aide' pour la liste des commandes.");
             }
             commandeReussie = false;
@@ -162,6 +183,7 @@ class Program
     public static void connect() {
         try
         {
+            connection.ConnectionString = connectionStringBuilder.ConnectionString;
             connection.Open();
             connectionOpened = true;
             Console.WriteLine("Connexion réussie. De nouvelles commandes sont disponibles.");

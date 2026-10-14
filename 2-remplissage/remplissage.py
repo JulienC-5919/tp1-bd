@@ -16,6 +16,8 @@ CLIENTS = 4000
 VOITURES = 600
 LOCATIONS = 6000
 
+locationsActuelles = 0
+
 # Les voitures ne pourront pas être louées ou remises en dehors des heures d'ouverture.
 OUVERTURE = 9 # heure d'ouverture des succursales : 9:00 AM
 FERMETURE = 17 # heure de fermeture des succursales : 5:00 PM
@@ -290,7 +292,7 @@ with psycopg.connect(
                             etatAleatoire(), # ------------------------------------------ état aléatoire
                             random.randint(0, 200000), # -------------------------------- kilometrage
                             faker.date_between(start_date="-10y", end_date="today"), # -- date de construction
-                            round(random.uniform(15000, 80000), 2), # ------------------- Prix par jour
+                            round(random.uniform(150, 800), 2), # ----------------------- Prix par jour
                             random.randint(1, SUCCURSALES) # ---------------------------- succursale aléatoire
                         )
                     )
@@ -306,247 +308,241 @@ with psycopg.connect(
 
         for _ in range(LOCATIONS):
 
-                        voiture_id, prix_jour, succursale = random.choice(prix_par_voiture)
-                        
-                        duree_location = random.randint(1, 30)
-                        date_debut = faker.date_between(start_date="-2y", end_date="today")
-                        date_fin = date_debut + datetime.timedelta(days=duree_location)
+                voiture_id, prix_jour, succursale = random.choice(prix_par_voiture)
+                
+                duree_location = random.randint(1, 30)
+                date_debut = faker.date_between(start_date="-2y", end_date="today")
+                date_fin = date_debut + datetime.timedelta(days=duree_location)
 
-                        abandonner = False # Conflit d'horaire impossible à résoudre
+                abandonner = False # Conflit d'horaire impossible à résoudre
 
-                        # Recherche de conflits horaire
-                        while True:
-                            cursor.execute(
-                                """
-                               SELECT date_debut, date_fin
-                               FROM location_voiture
-                                WHERE id_voiture = %s
-                                  AND date_debut <= %s
-                                  AND date_fin >= %s
-                                ORDER BY date_debut
-                                """,
-                                (voiture_id, date_fin, date_debut),
-                            )
+                # Recherche de conflits horaire
+                while True:
+                    cursor.execute(
+                        """
+                       SELECT date_debut, date_fin
+                       FROM location_voiture
+                        WHERE id_voiture = %s
+                          AND date_debut <= %s
+                          AND date_fin >= %s
+                        ORDER BY date_debut
+                        """,
+                        (voiture_id, date_fin, date_debut),
+                    )
 
-                            conflit = cursor.fetchone()
+                    conflit = cursor.fetchone()
 
-                            if conflit is None:
-                                break
+                    if conflit is None:
+                        break
 
-                            debut_existant, fin_existant = conflit
+                    debut_existant, fin_existant = conflit
 
-                            if debut_existant <= date_debut <= fin_existant:
-                                # La nouvelle location commence pendant l'ancienne.
-                                date_debut = fin_existant + datetime.timedelta(days=1)
+                    if debut_existant <= date_debut <= fin_existant:
+                        # La nouvelle location commence pendant l'ancienne.
+                        date_debut = fin_existant + datetime.timedelta(days=1)
 
-                            elif debut_existant <= date_fin <= fin_existant:
-                                # La nouvelle location finit pendant l'ancienne.
-                                date_fin = debut_existant - datetime.timedelta(days=1)
+                    elif debut_existant <= date_fin <= fin_existant:
+                        # La nouvelle location finit pendant l'ancienne.
+                        date_fin = debut_existant - datetime.timedelta(days=1)
 
-                            else:
-                                # La nouvelle location englobe entièrement l'ancienne.
-                                abandonnees += 1
-                                abandonner = True
-                                break
+                    else:
+                        # La nouvelle location englobe entièrement l'ancienne.
+                        abandonnees += 1
+                        abandonner = True
+                        break
 
-                            if date_debut > date_fin:
-                                abandonnees += 1
-                                abandonner = True
-                                break
-                        # Fin de la recherche de conflits horaire
+                    if date_debut > date_fin:
+                        abandonnees += 1
+                        abandonner = True
+                        break
+                # Fin de la recherche de conflits horaire
 
-                        if abandonner:
-                            continue
+                if abandonner:
+                    continue
 
-                        client = random.randint(1, CLIENTS)
-                        cout = prix_jour * duree_location
+                client = random.randint(1, CLIENTS)
+                cout = prix_jour * duree_location
 
-                        chance = random.randint(1,20)
-                        retard = 0
-                        match chance:
+                chance = random.randint(1,20)
+                retard = 0
+                match chance:
 
-                            # Cas rare où la voiture est retournée en retard
-                            case 1:
-                                retard = random.randint(1, 3)
-                                duree_utilisation = duree_location + retard
+                    # Cas rare où la voiture est retournée en retard
+                    case 1:
+                        retard = random.randint(1, 3)
+                        duree_utilisation = duree_location + retard
 
-                            # cas rare où la voiture est retournée beaucoup plus tôt que prévu
-                            case 2:
-                                duree_utilisation = random.randint(1, duree_location)
-                            # Normalement, la durée d'utilisation est légèrement inférieure ou égale à la durée de location
-                            case _:
-                                duree_utilisation = duree_location - random.randint(0,1)
-                        
-                        date_retour = date_debut + datetime.timedelta(
-                            days=duree_utilisation
+                    # cas rare où la voiture est retournée beaucoup plus tôt que prévu
+                    case 2:
+                        duree_utilisation = random.randint(1, duree_location)
+                    # Normalement, la durée d'utilisation est légèrement inférieure ou égale à la durée de location
+                    case _:
+                        duree_utilisation = duree_location - random.randint(0,1)
+                
+                date_retour = date_debut + datetime.timedelta(
+                    days=duree_utilisation
+                )
+
+                retour = datetime.datetime.combine(
+                     date_retour,
+                    heureAleatoire(),
+                )
+
+                if retour > datetime.datetime.now():
+                    locationsActuelles += 1
+                    retour = None
+
+                    manquant = date_fin < datetime.date.today()
+                   
+                    cursor.execute(
+                        """
+                        UPDATE voiture
+                        SET id_etat = (
+                            SELECT id
+                            FROM etat_vehicule
+                            WHERE nom = %s
                         )
-
-                        retour = datetime.datetime.combine(
-                             date_retour,
-                            heureAleatoire(),
+                        WHERE id = %s
+                        """,
+                            ("manquant" if manquant else "loué", voiture_id)
                         )
-
-                        if retour > datetime.datetime.now():
-                            retour = None
-
-                            if retard == 0:
-                                cursor.execute(
-                                    """
-                                    UPDATE voiture
-                                 
-                                    SET id_etat = (
-                                        SELECT id_etat
-                                        FROM etat_vehicule
-                                        WHERE nom = 'loué'
-                                    )
-                                    WHERE id = %s
-                                    """,
-                                    (voiture_id,)
-                                )
-                            else:
-                                cursor.execute(
-                                    """
-                                    UPDATE voiture
-
-                                    SET id_etat = (
-                                        SELECT id_etat
-                                        FROM etat_vehicule
-                                        WHERE nom = 'manquant'
-                                    )
-                                    WHERE id = %s
-                                    """,
-                                    (voiture_id,)
-                                )
+                    
 
 
-                        paiement = {
-                            "type": random.choice(["carte de crédit", "carte de débit", "comptant"]),
-                            "fournisseur": faker.credit_card_provider(),
-                            "numero": faker.unique.credit_card_number(),
-                        }
+                paiement = {
+                    "type": random.choice(["carte de crédit", "carte de débit", "comptant"]),
+                    "fournisseur": faker.credit_card_provider(),
+                    "numero": faker.unique.credit_card_number(),
+                }
 
-                        # Facture normale de la location
+                # Facture normale de la location
+                cursor.execute(
+                    """
+                    INSERT INTO facture (id_client, id_succursale, date_facture, montant, montant_tps, montant_tvq, paiement)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (
+                        client, # -------------------- client
+                        succursale, # ---------------- succursale
+                        date_debut, # ---------------- date de la facture
+                        cout, # ---------------------- coût de la location
+                        round(cout * 0.05, 2), # ----- montant_tps
+                        round(cout * 0.09975, 2), # -- montant_tvq
+                        Jsonb(paiement), # ----------- mode de paiement
+                    )
+                )
+
+                # Location de la voiture
+                cursor.execute(
+                    """
+                    INSERT INTO location_voiture (id_voiture, id_facture, id_loueur, date_debut, date_fin, retour, kilometrage)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (
+                        voiture_id, # ----------------------------------------------- voiture
+                        cursor.fetchone()[0], # ------------------------------------- facture
+                        random.choice(loueurs_par_succursale[succursale]), # -------- loueur de la même succursale
+                        date_debut, # ----------------------------------------------- date de début
+                        date_fin, # ------------------------------------------------- date de fin
+                        retour, # --------------------------------------------------- Date et heure du retour
+                        random.uniform(15 * duree_location, 55 * duree_location) # -- kilométrage
+                    )
+                )
+
+                # Si la voiture n'est pas encore retournée, les pénalités ne sont pas encore payées.
+                if retour == None:
+                    continue
+
+                # Retard
+                penalite_retard = retard * prix_jour * 2
+
+                # Contravention de stationnement
+                if (random.randint(1, CHANCE_AMENDE_STATIONNEMENT) == 1):
+                    penalite_stationnement = random.randint(10, 18) * 5
+                else:
+                    penalite_stationnement = 0
+
+                # Contravention pour excès de vitesse
+                if (random.randint(1, CHANCE_AMENDE_VITESSE) == 1):
+                    penalite_vitesse = random.randint(5, 16) * 10
+                else:
+                    penalite_vitesse = 0
+
+                penalite_totale = penalite_retard + penalite_stationnement + penalite_vitesse
+
+                # Facture pour les pénalités
+                if penalite_totale > 0:
+
+                    id_location = cursor.fetchone()[0]
+
+                    cursor.execute(
+                        """
+                        INSERT INTO facture (id_client, id_succursale, date_facture, montant, montant_tps, montant_tvq, paiement)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        RETURNING id
+                        """,
+                        (
+                            client,
+                            succursale,
+                            date_retour,
+                            penalite_totale,
+                            round(penalite_totale * 0.05, 2),
+                            round(penalite_totale * 0.09975, 2),
+                            Jsonb(paiement)
+                        )
+                    )
+
+                    facture_penalite = cursor.fetchone()[0]
+
+                    if penalite_retard > 0:
                         cursor.execute(
                             """
-                            INSERT INTO facture (id_client, id_succursale, date_facture, montant, montant_tps, montant_tvq, paiement)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
-                            RETURNING id
+                            INSERT INTO penalite (id_location, id_facture, montant, raison)
+                            VALUES (%s, %s, %s, %s)
                             """,
                             (
-                                client, # -------------------- client
-                                succursale, # ---------------- succursale
-                                date_debut, # ---------------- date de la facture
-                                cout, # ---------------------- coût de la location
-                                round(cout * 0.05, 2), # ----- montant_tps
-                                round(cout * 0.09975, 2), # -- montant_tvq
-                                Jsonb(paiement), # ----------- mode de paiement
+                                id_location, # ---------------------------------- location
+                                facture_penalite, # ----------------------------- facture associée à la pénalité
+                                penalite_retard, # ------------------------------ montant de la pénalité
+                                Jsonb({'raison': 'retard', 'duree': retard}) # -- raison de la pénalité
                             )
                         )
 
-                        # Location de la voiture
+                    if penalite_stationnement > 0:
                         cursor.execute(
                             """
-                            INSERT INTO location_voiture (id_voiture, id_facture, id_loueur, date_debut, date_fin, retour, kilometrage)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
-                            RETURNING id
+                            INSERT INTO penalite (id_location, id_facture, montant, raison)
+                            VALUES (%s, %s, %s, %s)
                             """,
                             (
-                                voiture_id, # ----------------------------------------------- voiture
-                                cursor.fetchone()[0], # ------------------------------------- facture
-                                random.choice(loueurs_par_succursale[succursale]), # -------- loueur de la même succursale
-                                date_debut, # ----------------------------------------------- date de début
-                                date_fin, # ------------------------------------------------- date de fin
-                                retour, # --------------------------------------------------- Date et heure du retour
-                                random.uniform(15 * duree_location, 55 * duree_location) # -- kilométrage
+                                id_location, # --------------------------------------------------------------- location
+                                facture_penalite, # ---------------------------------------------------------- facture associée à la pénalité
+                                penalite_stationnement, # ---------------------------------------------------- montant de la pénalité
+                                Jsonb({'raison': 'contravention', 'type_contravention': 'stationnement'}) # -- raison de la pénalité
                             )
                         )
 
-                        # Retard
-                        penalite_retard = retard * prix_jour * 4
-
-                        # Contravention de stationnement
-                        if (random.randint(1, CHANCE_AMENDE_STATIONNEMENT) == 1):
-                            penalite_stationnement = random.randint(10, 18) * 5
-                        else:
-                            penalite_stationnement = 0
-
-                        # Contravention pour excès de vitesse
-                        if (random.randint(1, CHANCE_AMENDE_VITESSE) == 1):
-                            penalite_vitesse = random.randint(5, 16) * 10
-                        else:
-                            penalite_vitesse = 0
-
-                        penalite_totale = penalite_retard + penalite_stationnement + penalite_vitesse
-
-                        # Facture pour les pénalités
-                        if penalite_totale > 0:
-
-                            id_location = cursor.fetchone()[0]
-
-                            cursor.execute(
-                                """
-                                INSERT INTO facture (id_client, id_succursale, date_facture, montant, montant_tps, montant_tvq, paiement)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                                RETURNING id
-                                """,
-                                (
-                                    client,
-                                    succursale,
-                                    date_retour,
-                                    penalite_totale,
-                                    round(penalite_totale * 0.05, 2),
-                                    round(penalite_totale * 0.09975, 2),
-                                    Jsonb(paiement)
-                                )
+                    if penalite_vitesse > 0:
+                        cursor.execute(
+                            """
+                            INSERT INTO penalite (id_location, id_facture, montant, raison)
+                            VALUES (%s, %s, %s, %s)
+                            """,
+                            (
+                                id_location, # ----------------------------------------------------------------- location
+                                facture_penalite, # ------------------------------------------------------------ facture associée à la pénalité
+                                penalite_vitesse, # ------------------------------------------------------------ montant de la pénalité
+                                Jsonb({'raison': 'contravention', 'type_contravention': 'excès de vitesse'}) # -- raison de la pénalité
                             )
-
-                            facture_penalite = cursor.fetchone()[0]
-
-                            if penalite_retard > 0:
-                                cursor.execute(
-                                    """
-                                    INSERT INTO penalite (id_location, id_facture, montant, raison)
-                                    VALUES (%s, %s, %s, %s)
-                                    """,
-                                    (
-                                        id_location, # ---------------------------------- location
-                                        facture_penalite, # ----------------------------- facture associée à la pénalité
-                                        penalite_retard, # ------------------------------ montant de la pénalité
-                                        Jsonb({'raison': 'retard', 'duree': retard}) # -- raison de la pénalité
-                                    )
-                                )
-
-                            if penalite_stationnement > 0:
-                                cursor.execute(
-                                    """
-                                    INSERT INTO penalite (id_location, id_facture, montant, raison)
-                                    VALUES (%s, %s, %s, %s)
-                                    """,
-                                    (
-                                        id_location, # --------------------------------------------------------------- location
-                                        facture_penalite, # ---------------------------------------------------------- facture associée à la pénalité
-                                        penalite_stationnement, # ---------------------------------------------------- montant de la pénalité
-                                        Jsonb({'raison': 'contravention', 'type_contravention': 'stationnement'}) # -- raison de la pénalité
-                                    )
-                                )
-
-                            if penalite_vitesse > 0:
-                                cursor.execute(
-                                    """
-                                    INSERT INTO penalite (id_location, id_facture, montant, raison)
-                                    VALUES (%s, %s, %s, %s)
-                                    """,
-                                    (
-                                        id_location, # ----------------------------------------------------------------- location
-                                        facture_penalite, # ------------------------------------------------------------ facture associée à la pénalité
-                                        penalite_vitesse, # ------------------------------------------------------------ montant de la pénalité
-                                        Jsonb({'raison': 'contravention', 'type_contravention': 'excès de vitesse'}) # -- raison de la pénalité
-                                    )
-                                )
+                        )
 
 
 if (abandonnees > 0):
     print(f"{abandonnees} locations n'ont pas pu être enregistrées.")
 else:
     print("Toutes les locations ont été enregistrées avec succès.")
+
+print(f"{locationsActuelles} locations sont actuellement en cours.")
         

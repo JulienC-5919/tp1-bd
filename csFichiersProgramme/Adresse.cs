@@ -9,4 +9,19 @@ public class Adresse : ObjetJson
     {
         return Rue; // Seulement la rue pour afficher dans des petites cases
     }
+
+    public string ToStringComplet()
+    {
+        return string.Join(", ", new[] { Rue, Ville, Pays, CodePostal }
+            .Where(p => !string.IsNullOrWhiteSpace(p)));
+    }
+
+    public static Adresse? DepuisJson(string json)
+    {
+        var options = new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower
+        };
+        return System.Text.Json.JsonSerializer.Deserialize<Adresse>(json, options);
+    }
 }
