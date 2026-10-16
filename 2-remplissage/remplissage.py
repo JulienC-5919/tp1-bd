@@ -1,6 +1,8 @@
 
 import datetime
 import json
+import os
+import re
 import random
 import string
 
@@ -10,21 +12,33 @@ from faker import Faker
 
 silencieux = False # Ne rien écrire à la console
 
-SUCCURSALES = 25
-LOUEURS = 125
-CLIENTS = 4000
-VOITURES = 600
-LOCATIONS = 6000
+def chargerConfig(chemin):
+    config = {}
+    with open(chemin, encoding="utf-8") as f:
+        for ligne in f:
+            ligne = re.sub(r"\s+#.*$", "", ligne.strip())
+            if not ligne or ligne.startswith("#") or "=" not in ligne:
+                continue
+            cle, valeur = ligne.split("=", 1)
+            config[cle.strip()] = valeur.strip()
+    return config
+
+config = chargerConfig(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "connexion.env"))
+
+SUCCURSALES = int(config["SUCCURSALES"])
+LOUEURS = int(config["LOUEURS"])
+CLIENTS = int(config["CLIENTS"])
+VOITURES = int(config["VOITURES"])
+LOCATIONS = int(config["LOCATIONS"])
 
 locationsActuelles = 0
 
 # Les voitures ne pourront pas être louées ou remises en dehors des heures d'ouverture.
-OUVERTURE = 9 # heure d'ouverture des succursales : 9:00 AM
-FERMETURE = 17 # heure de fermeture des succursales : 5:00 PM
+OUVERTURE = int(config["OUVERTURE"]) # heure d'ouverture des succursales
+FERMETURE = int(config["FERMETURE"]) # heure de fermeture des succursales
 
-CHANCE_AMENDE_STATIONNEMENT = 20 # 1/20 chance qu'il y ait une contravention de stationnement pour une location donnée
-CHANCE_AMENDE_VITESSE = 50 # 1/50 chance qu'il y ait une contravention pour excès de vitesse pour une location donnée
-# Les clients ne font vraiment pas attention haha
+CHANCE_AMENDE_STATIONNEMENT = int(config["CHANCE_AMENDE_STATIONNEMENT"]) # 1/N chance de contravention de stationnement par location
+CHANCE_AMENDE_VITESSE = int(config["CHANCE_AMENDE_VITESSE"]) # 1/N chance de contravention pour excès de vitesse par location
 
 MARQUES = (
     "Toyota",
@@ -136,7 +150,11 @@ MODELES = (
 )
 
 with psycopg.connect(
-    "dbname=tp1_julien user=robot password=yfzvjp9y3s9j37q host=localhost port=5432"
+    dbname=config["DB_NAME"],
+    user=config["DB_USER"],
+    password=config["DB_PASSWORD"],
+    host=config["DB_HOST"],
+    port=config["DB_PORT"],
 ) as conn:
     with conn.cursor() as cursor:
 

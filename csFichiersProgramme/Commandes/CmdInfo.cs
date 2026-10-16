@@ -47,10 +47,10 @@ public class CmdInfo : Commande
                 + $"\n\tImmatriculation: {Program.voiture.immatriculation}"
                 + $"\n\tNoSerie: {Program.voiture.noSerie}"
                 + $"\n\tSuccursale: {Program.voiture.succursale.Adresse.ToStringComplet()}"
-                + $"\n\tÉtat: {etat}"
                 + $"\n\tKilométrage: {Program.voiture.kilometrage} km"
                 + $"\n\tDate de construction: {Program.voiture.dateConstruction:yyyy-MM-dd}"
                 + $"\n\tPrix par jour: {Program.voiture.prixJour:0.00} $"
+                + $"\n\tÉtat: {etat}"
                 );
 
             if (Program.voiture.etat == EtatVehicule.loue)
@@ -80,6 +80,7 @@ public class CmdInfo : Commande
         if (!r.Read())
             return;
 
+        Console.WriteLine($"\nInfos de location:");
         Console.WriteLine($"\tLoué par : {r.GetString(0)} {r.GetString(1)}");
         Console.WriteLine($"\tCourriel : {(r.IsDBNull(2) ? "(aucun)" : r.GetString(2))}");
         Console.WriteLine($"\tRetour prévu : {r.GetDateTime(3):yyyy-MM-dd}");

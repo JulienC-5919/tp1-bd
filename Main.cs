@@ -23,6 +23,7 @@ class Program
     public static Voiture? voiture = null;
 
     public static string utilisateur = "robot";
+    static Dictionary<string, string> config = new();
     public static Commande[] commandes = new Commande[] {
         new CmdFin(),
         new CmdAide(),
@@ -43,22 +44,34 @@ class Program
     static void Main(string[] args)
     {
         bool commandeReussie = false;
+        config = ChargerConfig();
+        string hoteDefaut = config.GetValueOrDefault("DB_HOST", "localhost");
+        string utilisateurDefaut = config.GetValueOrDefault("DB_USER", "robot");
+        string bdDefaut = config.GetValueOrDefault("DB_NAME", "tp1_julien");
 
         if (args.Length >= 1) connectionStringBuilder.Host = args[0];
-        else connectionStringBuilder.Host = prompt("(localhost par défaut) Hôte: ", "localhost");
+        else connectionStringBuilder.Host = prompt($"({hoteDefaut} par défaut) Hôte: ", hoteDefaut);
 
         if (args.Length >= 2) {
             connectionStringBuilder.Username = args[1];
             utilisateur = args[1];
             }
         else {
-            connectionStringBuilder.Username = prompt("(robot par défaut) Nom d'utilisateur: ", "robot");
+            connectionStringBuilder.Username = prompt($"({utilisateurDefaut} par défaut) Nom d'utilisateur: ", utilisateurDefaut);
+            utilisateur = connectionStringBuilder.Username;
         }
 
         if (args.Length >= 3) connectionStringBuilder.Database = args[2];
-        else connectionStringBuilder.Database = prompt("(tp1_julien par défaut) Base de données: ", "tp1_julien");
+        else connectionStringBuilder.Database = prompt($"({bdDefaut} par défaut) Base de données: ", bdDefaut);
         
-        connectionStringBuilder.Password = EntrerMdp();
+        if (config.TryGetValue("DB_PORT", out var port) && int.TryParse(port, out var portNum))
+            connectionStringBuilder.Port = portNum;
+
+        string mdpConfig = config.GetValueOrDefault("DB_PASSWORD", "");
+        string reponseMdp = EntrerMdp(string.IsNullOrEmpty(mdpConfig)
+            ? "Mot de passe: "
+            : "(mot de passe dans connexion.env par défaut) Mot de passe: ");
+        connectionStringBuilder.Password = string.IsNullOrEmpty(reponseMdp) ? mdpConfig : reponseMdp;
 
         connection = new NpgsqlConnection(connectionStringBuilder.ConnectionString);
         connect();
@@ -103,6 +116,28 @@ class Program
             }
             commandeReussie = false;
         }
+    }
+
+    static Dictionary<string, string> ChargerConfig()
+    {
+        var resultat = new Dictionary<string, string>();
+        string? dossier = AppContext.BaseDirectory;
+        while (dossier != null && !File.Exists(Path.Combine(dossier, "connexion.env")))
+            dossier = Path.GetDirectoryName(dossier);
+        if (dossier == null)
+        {
+            Console.WriteLine("connexion.env introuvable, valeurs par défaut utilisées.");
+            return resultat;
+        }
+
+        foreach (var ligne in File.ReadLines(Path.Combine(dossier, "connexion.env")))
+        {
+            var l = System.Text.RegularExpressions.Regex.Replace(ligne.Trim(), @"\s+#.*$", "");
+            int egal = l.IndexOf('=');
+            if (l.Length == 0 || l.StartsWith('#') || egal < 0) continue;
+            resultat[l[..egal].Trim()] = l[(egal + 1)..].Trim();
+        }
+        return resultat;
     }
 
     public static string EntrerMdp(string prompt = "Mot de passe: ")
