@@ -396,19 +396,19 @@
     ]
   },
   "packageFolders": {
-    "/home/pixldragon64/.nuget/packages/": {}
+    "/Users/julien/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/pixldragon64/tp-bd/tp1-bd/tp1-bd2.csproj",
+      "projectUniqueName": "/Users/julien/tp1-bd2/tp1-bd2.csproj",
       "projectName": "tp1-bd2",
-      "projectPath": "/home/pixldragon64/tp-bd/tp1-bd/tp1-bd2.csproj",
-      "packagesPath": "/home/pixldragon64/.nuget/packages/",
-      "outputPath": "/home/pixldragon64/tp-bd/tp1-bd/obj/",
+      "projectPath": "/Users/julien/tp1-bd2/tp1-bd2.csproj",
+      "packagesPath": "/Users/julien/.nuget/packages/",
+      "outputPath": "/Users/julien/tp1-bd2/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/home/pixldragon64/.nuget/NuGet/NuGet.Config"
+        "/Users/julien/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
@@ -465,7 +465,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/home/pixldragon64/.dotnet/sdk/10.0.401/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.400/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",

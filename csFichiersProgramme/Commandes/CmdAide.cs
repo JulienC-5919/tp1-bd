@@ -15,6 +15,14 @@ public class CmdAide : Commande
                     {
                         aidePourCommande(Program.commandes[i], Program.commandes[i].NomFr);
                     }
+                    if (Program.connectionOpened)
+                    {
+                        Console.WriteLine("\nCommandes liées à la base de données :");
+                        for (int i = 0; i < Program.commandesBd.Length; i++)
+                        {
+                            aidePourCommande(Program.commandesBd[i], Program.commandesBd[i].NomFr);
+                        }
+                    }
                     break;
 
                 case "en":
@@ -22,12 +30,28 @@ public class CmdAide : Commande
                     {
                         aidePourCommande(Program.commandes[i], Program.commandes[i].NomEn);
                     }
+                    if (Program.connectionOpened)
+                    {
+                        Console.WriteLine("\nCommandes liées à la base de données :");
+                        for (int i = 0; i < Program.commandesBd.Length; i++)
+                        {
+                            aidePourCommande(Program.commandesBd[i], Program.commandesBd[i].NomEn);
+                        }
+                    }
                     break;
 
                 case "abb":
                     for (int i = 0; i < Program.commandes.Length; i++)
                     {
                         aidePourCommande(Program.commandes[i], Program.commandes[i].NomAbb);
+                    }
+                    if (Program.connectionOpened)
+                    {
+                        Console.WriteLine("\nCommandes liées à la base de données :");
+                        for (int i = 0; i < Program.commandesBd.Length; i++)
+                        {
+                            aidePourCommande(Program.commandesBd[i], Program.commandesBd[i].NomAbb);
+                        }
                     }
                     break;
 
@@ -50,6 +74,14 @@ public class CmdAide : Commande
                         {
                             aidePourCommande(Program.commandes[i], Program.commandes[i].NomFr);
                         }
+                        if (Program.connectionOpened)
+                        {
+                            Console.WriteLine("\nCommandes liées à la base de données :");
+                            for (int i = 0; i < Program.commandesBd.Length; i++)
+                            {
+                                aidePourCommande(Program.commandesBd[i], Program.commandesBd[i].NomFr);
+                            }
+                        }
                     }
                     break;
             }
@@ -60,6 +92,14 @@ public class CmdAide : Commande
             {
                 aidePourCommande(Program.commandes[i], Program.commandes[i].NomFr);
             }
+            if (Program.connectionOpened)
+                {
+                    Console.WriteLine("\nCommandes liées à la base de données :");
+                    for (int i = 0; i < Program.commandesBd.Length; i++)
+                    {
+                        aidePourCommande(Program.commandesBd[i], Program.commandesBd[i].NomFr);
+                    }
+                }
         }
     }
 
@@ -77,5 +117,10 @@ public class CmdAide : Commande
             + new string(' ', LARGEUR_COLONNE - nom.Length)
             + ": "
             + commande.AideCourte);
+    }
+
+    void aideFr()
+    {
+        
     }
 }

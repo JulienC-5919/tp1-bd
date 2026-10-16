@@ -20,6 +20,7 @@ class Program
     public static bool connectionOpened = false;
 
     public static Succursale? succursale = null;
+    public static Voiture? voiture = null;
 
     public static string utilisateur = "robot";
     public static Commande[] commandes = new Commande[] {
@@ -30,11 +31,13 @@ class Program
         new CmdUtilisateur(),
         new CmdBaseDonnees(),
         new CmdConnecter(),
+        new CmdInfo()
     };
 
     public static Commande[] commandesBd = new Commande[] {
         new CmdSuccursales(),
-        new CmdSuccursale()
+        new CmdSuccursale(),
+        new CmdVoiture(),
     };
     static void Main(string[] args)
     {
@@ -169,15 +172,6 @@ class Program
     static String format(String input) {
         input = input.Replace("\\\\", "\\").Replace("\\\"", "\"").Replace("\\n", "\n");
         return input;
-    }
-
-    static void afficherAide() 
-    {
-        Console.WriteLine("Aide:");
-        Console.WriteLine("  exit, fin   : Quitter le programme");
-        Console.WriteLine("  help, aide  : Afficher cette aide");
-
-        if (connectionOpened); // todo afficher commandes bd
     }
 
     public static void connect() {
