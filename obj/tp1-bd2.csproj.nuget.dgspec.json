@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "/Users/julien/tp1-bd2/tp1-bd2.csproj": {}
+    "/home/pixldragon64/tp-bd/tp1-bd/tp1-bd2.csproj": {}
   },
   "projects": {
-    "/Users/julien/tp1-bd2/tp1-bd2.csproj": {
+    "/home/pixldragon64/tp-bd/tp1-bd/tp1-bd2.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/julien/tp1-bd2/tp1-bd2.csproj",
+        "projectUniqueName": "/home/pixldragon64/tp-bd/tp1-bd/tp1-bd2.csproj",
         "projectName": "tp1-bd2",
-        "projectPath": "/Users/julien/tp1-bd2/tp1-bd2.csproj",
-        "packagesPath": "/Users/julien/.nuget/packages/",
-        "outputPath": "/Users/julien/tp1-bd2/obj/",
+        "projectPath": "/home/pixldragon64/tp-bd/tp1-bd/tp1-bd2.csproj",
+        "packagesPath": "/home/pixldragon64/.nuget/packages/",
+        "outputPath": "/home/pixldragon64/tp-bd/tp1-bd/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/Users/julien/.nuget/NuGet/NuGet.Config"
+          "/home/pixldragon64/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
@@ -71,7 +71,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.400/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "/home/pixldragon64/.dotnet/sdk/10.0.401/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",

@@ -46,14 +46,43 @@ public class CmdInfo : Commande
                 $"{Program.voiture.modele.Marque} {Program.voiture.modele.Nom} sélectionnée."
                 + $"\n\tImmatriculation: {Program.voiture.immatriculation}"
                 + $"\n\tNoSerie: {Program.voiture.noSerie}"
-                + $"\n\tSuccursale: {Program.voiture.succursale.Id}"
+                + $"\n\tSuccursale: {Program.voiture.succursale.Adresse.ToStringComplet()}"
                 + $"\n\tÉtat: {etat}"
+                + $"\n\tKilométrage: {Program.voiture.kilometrage} km"
+                + $"\n\tDate de construction: {Program.voiture.dateConstruction:yyyy-MM-dd}"
+                + $"\n\tPrix par jour: {Program.voiture.prixJour:0.00} $"
                 );
+
+            if (Program.voiture.etat == EtatVehicule.loue)
+                AfficherLocationCourante(Program.voiture.immatriculation);
             return;
         }
 
         Console.WriteLine($"Argument inconnu: {args[0]}");
         
+    }
+
+    private void AfficherLocationCourante(string immatriculation)
+    {
+        const string sql = @"
+            SELECT c.prenom, c.nom, c.contact->>'email', l.date_fin
+            FROM location_voiture l
+            JOIN voiture v ON v.id = l.id_voiture
+            JOIN facture f ON f.id = l.id_facture
+            JOIN client c ON c.id = f.id_client
+            WHERE v.plaque = @plaque AND l.retour IS NULL
+            ORDER BY l.date_debut DESC
+            LIMIT 1";
+
+        using var cmd = new Npgsql.NpgsqlCommand(sql, Program.connection);
+        cmd.Parameters.AddWithValue("plaque", immatriculation);
+        using var r = cmd.ExecuteReader();
+        if (!r.Read())
+            return;
+
+        Console.WriteLine($"\tLoué par : {r.GetString(0)} {r.GetString(1)}");
+        Console.WriteLine($"\tCourriel : {(r.IsDBNull(2) ? "(aucun)" : r.GetString(2))}");
+        Console.WriteLine($"\tRetour prévu : {r.GetDateTime(3):yyyy-MM-dd}");
     }
 
     public string AideCourte => "Affiche des informations sur la connexion ou autre chose.";

@@ -38,6 +38,7 @@ class Program
         new CmdSuccursales(),
         new CmdSuccursale(),
         new CmdVoiture(),
+        new CmdVoitures()
     };
     static void Main(string[] args)
     {
