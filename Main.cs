@@ -47,7 +47,7 @@ class Program
         config = ChargerConfig();
         string hoteDefaut = config.GetValueOrDefault("DB_HOST", "localhost");
         string utilisateurDefaut = config.GetValueOrDefault("DB_USER", "robot");
-        string bdDefaut = config.GetValueOrDefault("DB_NAME", "tp1_julien");
+        string bdDefaut = Environment.GetEnvironmentVariable("DB_NAME") ?? config.GetValueOrDefault("DB_NAME", "tp1_julien");
 
         if (args.Length >= 1) connectionStringBuilder.Host = args[0];
         else connectionStringBuilder.Host = prompt($"({hoteDefaut} par défaut) Hôte: ", hoteDefaut);
@@ -71,7 +71,8 @@ class Program
         string reponseMdp = EntrerMdp(string.IsNullOrEmpty(mdpConfig)
             ? "Mot de passe: "
             : "(mot de passe dans connexion.env par défaut) Mot de passe: ");
-        connectionStringBuilder.Password = string.IsNullOrEmpty(reponseMdp) ? mdpConfig : reponseMdp;
+        string mdpFinal = string.IsNullOrEmpty(reponseMdp) ? mdpConfig : reponseMdp;
+        if (!string.IsNullOrEmpty(mdpFinal)) connectionStringBuilder.Password = mdpFinal;
 
         connection = new NpgsqlConnection(connectionStringBuilder.ConnectionString);
         connect();
@@ -79,7 +80,9 @@ class Program
         while (true)
         {
             Console.Write("> ");
-            String[] args2 = split(Console.ReadLine() ?? "");
+            string? ligneCmd = Console.ReadLine();
+            if (ligneCmd == null) return;
+            String[] args2 = split(ligneCmd);
             
             if (args2.Length == 0) continue;
 
@@ -143,6 +146,7 @@ class Program
     public static string EntrerMdp(string prompt = "Mot de passe: ")
         {
         Console.Write(prompt);
+        if (Console.IsInputRedirected) return Console.ReadLine() ?? "";
         var sb = new System.Text.StringBuilder();
         while (true)
         {

@@ -182,28 +182,33 @@ INSERT INTO type_voiture(nom) VALUES
 
 -------------------| Utilisateur |-------------------
 
-DROP USER IF EXISTS robot;
-CREATE USER robot WITH PASSWORD 'yfzvjp9y3s9j37q'; -- Supprimer mdp?
-GRANT CONNECT ON DATABASE tp1_julien TO robot;
+-- Variables fournies par main.sh / main.bat à partir de connexion.env :
+-- db_name, db_user, db_password (peut être vide), db_has_password (true/false)
+SELECT format('CREATE USER %I', :'db_user')
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'db_user') \gexec
+\if :db_has_password
+ALTER USER :"db_user" WITH PASSWORD :'db_password';
+\endif
+GRANT CONNECT ON DATABASE :"db_name" TO :"db_user";
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
-GRANT USAGE ON SCHEMA public TO robot;
-GRANT INSERT, DELETE ON ALL TABLES IN SCHEMA public TO robot;
-REVOKE INSERT, DELETE ON TABLE etat_vehicule, type_voiture FROM robot;
+GRANT USAGE ON SCHEMA public TO :"db_user";
+GRANT INSERT, DELETE ON ALL TABLES IN SCHEMA public TO :"db_user";
+REVOKE INSERT, DELETE ON TABLE etat_vehicule, type_voiture FROM :"db_user";
 GRANT TRUNCATE ON TABLE succursale, loueur, client, marque,
-	modele_voiture, voiture, facture, location_voiture, penalite TO robot;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO robot;
-GRANT UPDATE ON ALL SEQUENCES IN SCHEMA public TO robot;
-REVOKE UPDATE ON SEQUENCE etat_vehicule_id_seq, type_voiture_id_seq FROM robot;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO robot;
+	modele_voiture, voiture, facture, location_voiture, penalite TO :"db_user";
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO :"db_user";
+GRANT UPDATE ON ALL SEQUENCES IN SCHEMA public TO :"db_user";
+REVOKE UPDATE ON SEQUENCE etat_vehicule_id_seq, type_voiture_id_seq FROM :"db_user";
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO :"db_user";
 
-ALTER TABLE location_voiture OWNER TO robot;
-ALTER TABLE facture OWNER TO robot;
-ALTER TABLE voiture OWNER TO robot;
-ALTER TABLE modele_voiture OWNER TO robot;
-ALTER TABLE marque OWNER TO robot;
-ALTER TABLE client OWNER TO robot;
-ALTER TABLE loueur OWNER TO robot;
-ALTER TABLE succursale OWNER TO robot;
-ALTER TABLE penalite OWNER TO robot;
+ALTER TABLE location_voiture OWNER TO :"db_user";
+ALTER TABLE facture OWNER TO :"db_user";
+ALTER TABLE voiture OWNER TO :"db_user";
+ALTER TABLE modele_voiture OWNER TO :"db_user";
+ALTER TABLE marque OWNER TO :"db_user";
+ALTER TABLE client OWNER TO :"db_user";
+ALTER TABLE loueur OWNER TO :"db_user";
+ALTER TABLE succursale OWNER TO :"db_user";
+ALTER TABLE penalite OWNER TO :"db_user";
 
 

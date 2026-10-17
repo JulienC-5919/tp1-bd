@@ -23,7 +23,10 @@ def chargerConfig(chemin):
             config[cle.strip()] = valeur.strip()
     return config
 
-config = chargerConfig(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "connexion.env"))
+config = chargerConfig(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".", "connexion.env"))
+
+# La variable d'environnement DB_NAME (définie par main.sh) a priorité sur connexion.env
+config["DB_NAME"] = os.environ.get("DB_NAME", config["DB_NAME"])
 
 SUCCURSALES = int(config["SUCCURSALES"])
 LOUEURS = int(config["LOUEURS"])
@@ -152,7 +155,7 @@ MODELES = (
 with psycopg.connect(
     dbname=config["DB_NAME"],
     user=config["DB_USER"],
-    password=config["DB_PASSWORD"],
+    password=config.get("DB_PASSWORD") or None,
     host=config["DB_HOST"],
     port=config["DB_PORT"],
 ) as conn:
